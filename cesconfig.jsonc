@@ -2,7 +2,7 @@
 // It is safe to delete this file as it does not affect the functionality of your application.
 {
   "cesVersion": "2.24.0-next.8b4d1c7",
-  "projectName": "my-expo-app",
+  "projectName": "frndshq",
   "packages": [
     {
       "name": "nativewind",

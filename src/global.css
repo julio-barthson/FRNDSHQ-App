@@ -1,0 +1,108 @@
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/preflight.css' layer(base);
+@import 'tailwindcss/utilities.css';
+
+@import 'nativewind/theme';
+
+/**
+ * The design system, as Tailwind theme variables.
+ *
+ * Hierarchy comes from the four surface levels, not from outlines. Each step up
+ * is a lighter surface, so a card reads as raised without needing a border —
+ * borders here are reserved for meaning (an error, a field edge), not for
+ * drawing boxes around everything.
+ */
+@theme {
+  /**
+   * The numeric spacing scale, in px. Tailwind's default is `0.25rem`, and
+   * react-native-css resolves `rem` to 14 on native (not the browser's 16), so
+   * the default would render every gap and padding 12.5% under the values this
+   * app was designed at. Pinning it to 4px makes the scale exact: `gap-2` is
+   * 8, `p-4` is 16, `gap-6` is 24, `py-8` is 32 — the old `Spacing` steps.
+   */
+  --spacing: 4px;
+
+  /* Surfaces. */
+  --color-ink: #000000; /* The page. Body text on this is 18.1:1. */
+  --color-ink-raised: #101012; /* Cards and rows sitting on the page. */
+  --color-ink-high: #1c1c1f; /* Chips, badges and controls sitting on a card. */
+  --color-ink-field: #141416; /* Text inputs — leans on its border, not depth. */
+
+  /* Lines. `line` is for field edges and dividers, never for outlining cards. */
+  --color-line: #2a2a2e;
+  --color-line-subtle: #1e1e22;
+  --color-line-focus: #0a84ff;
+
+  /* Blue. `blue` fills with white on top; `blue-ink` is the text/link blue —
+     the fill only reaches 5.8:1 on black, this one is 8.8:1. */
+  --color-blue: #0a84ff;
+  --color-blue-pressed: #0968cc;
+  --color-blue-ink: #5cacff;
+
+  /**
+   * Violet, the second accent. Blue stays the workhorse for primary actions;
+   * violet carries expression — the release hero, artwork placeholders, the
+   * illustrations. Same split as blue: `violet` fills at 4.9:1 on black, so
+   * text and icons use `violet-ink` at 9.9:1.
+   */
+  --color-violet: #7c5cff;
+  --color-violet-pressed: #6344e0;
+  --color-violet-ink: #b9a5ff;
+  --color-violet-surface: #17102e;
+  --color-violet-line: #2c1f52;
+
+  /* Copy. `fg` is body text, `muted` is supporting copy at 7.5:1 — not body. */
+  --color-fg: #e8eff6;
+  --color-muted: #8a9cae;
+  --color-danger: #ff7a66;
+
+  /**
+   * Status tones. Separate from the identity palette because they exist only
+   * to carry state — each is a foreground with its own dim surface and edge, so
+   * a badge reads as a badge on any of the four ink levels.
+   */
+  --color-info: #7fb8ff;
+  --color-info-surface: #0e1e2e;
+  --color-info-line: #1b3550;
+  --color-positive-surface: #0d2417;
+  --color-positive-line: #1a3e28;
+  --color-danger-surface: #2b1512;
+  --color-danger-line: #4a231c;
+  --color-positive: #6fd79b;
+
+  /**
+   * Outfit ships one file per weight and React Native will not synthesise one,
+   * so each weight is its own family. Use these, NEVER `font-medium`/`font-bold`
+   * — a weight utility on a bundled face gets you the regular file on Android
+   * and a faux bold on web. Named with the `outfit-` prefix precisely so they
+   * cannot be confused with Tailwind's font-weight utilities.
+   */
+  --font-sans: 'Outfit_400Regular';
+  --font-outfit: 'Outfit_400Regular';
+  --font-outfit-medium: 'Outfit_500Medium';
+  --font-outfit-semibold: 'Outfit_600SemiBold';
+  --font-outfit-bold: 'Outfit_700Bold';
+
+  /**
+   * One type scale for the whole app, so a heading is a heading everywhere.
+   * The steps are deliberately far apart — sizes clustered between 13 and 16
+   * leave nothing to separate a section from its contents.
+   *
+   * Size only, deliberately. Tailwind pairs a `--text-*--line-height` with each
+   * step, but react-native-css resolves `line-height` by MULTIPLYING the value
+   * against the element's font size (`native/styles/line-height.js`), so a
+   * 22px line-height on 16px text does not stay 22px on native. The original
+   * app set no line-height on button labels or input text either.
+   */
+  --text-display: 30px; /* Screen titles. */
+  --text-title: 22px; /* The subject of a screen, e.g. a release name. */
+  --text-heading: 17px; /* Card and section headings. */
+  --text-body: 16px;
+  --text-callout: 14px; /* Supporting copy under a heading. */
+  --text-label: 13px; /* Field labels and metadata. */
+  --text-caption: 11px; /* Eyebrows and badges, usually uppercased. */
+
+  --radius-field: 12px;
+  --radius-button: 12px;
+  --radius-card: 16px;
+}
