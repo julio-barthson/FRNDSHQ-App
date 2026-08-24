@@ -155,10 +155,29 @@ export default function VerifyEmailScreen() {
                   <Text className="font-outfit-semibold text-label text-muted tracking-[0.2px]">
                     Verification code
                   </Text>
-                  <TextInput
+                  {/* <TextInput
                     className={`rounded-field bg-ink-field font-outfit-semibold text-fg border px-4 py-4 text-center text-[24px] tracking-[8px] ${
                       fields.otp ? 'border-danger' : 'border-line'
                     }`}
+                    value={otp}
+                    onChangeText={onChangeOtp}
+                    placeholder="••••••"
+                    placeholderTextColor={Brand.border}
+                    selectionColor={Brand.blue}
+                    keyboardType="number-pad"
+                    maxLength={OTP_LENGTH}
+                    autoFocus
+                    editable={!pending}
+                    textContentType="oneTimeCode"
+                    autoComplete={Platform.OS === 'android' ? 'sms-otp' : 'one-time-code'}
+                    returnKeyType="go"
+                    onSubmitEditing={() => void submit(otp)}
+                    accessibilityLabel={
+                      fields.otp ? `Verification code, error: ${fields.otp}` : 'Verification code'
+                    }
+                  /> */}
+                  <TextInput
+                    className="border px-4 py-4 text-center"
                     value={otp}
                     onChangeText={onChangeOtp}
                     placeholder="••••••"
