@@ -1,21 +1,15 @@
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { Pressable, Text, TextInput, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AuthAlert } from '@/components/auth/auth-alert';
 import { AuthButton } from '@/components/auth/auth-button';
 import { CountryPicker } from '@/components/auth/country-picker';
+import { BrandMark } from '@/components/ui/brand-mark';
 import { FormField } from '@/components/ui/form-field';
+import { KeyboardScroll } from '@/components/ui/keyboard-scroll';
 import { Brand } from '@/constants/brand';
 import { DEFAULT_COUNTRY_CODE, findCountry, type Country } from '@/constants/countries';
 import { type Matchers } from '@/features/auth/field-errors';
@@ -40,11 +34,23 @@ const MATCHERS: Matchers<FieldName> = {
 type Step = 'type' | 'contact' | 'profile';
 
 /**
- * A label row has no bio, so its setup is one step shorter. The last entry is
- * the step that sends `isComplete`.
+ * The steps this particular account still has to answer. The last entry is the
+ * one that sends `isComplete`.
+ *
+ * A label row has no bio, so its setup is one step shorter.
+ *
+ * `contact` is skipped whenever the account already has a phone number, which
+ * is every account created through sign-up — `RegisterUserDto` requires
+ * `phoneNumber` and `country`, and both are stored before verification. Asking
+ * for the same number again on the next screen was pure repetition. The step
+ * survives for the accounts that genuinely arrive without one: signing in with
+ * Google returns an email and a name and no telephone number at all.
  */
-function stepsFor(accountType: AccountType): Step[] {
-  return accountType === 'LABEL' ? ['type', 'contact'] : ['type', 'contact', 'profile'];
+function stepsFor(accountType: AccountType, needsContact: boolean): Step[] {
+  const steps: Step[] = ['type'];
+  if (needsContact) steps.push('contact');
+  if (accountType !== 'LABEL') steps.push('profile');
+  return steps;
 }
 
 function TypeCard({
@@ -65,11 +71,11 @@ function TypeCard({
       accessibilityState={{ selected }}
       className={`rounded-card gap-1 border p-4 ${
         selected
-          ? 'border-violet bg-violet-surface'
+          ? 'border-blue bg-blue-surface'
           : 'border-line bg-ink-raised active:bg-ink-high'
       }`}>
       <Text
-        className={`font-outfit-semibold text-heading ${selected ? 'text-violet-ink' : 'text-fg'}`}>
+        className={`font-outfit-semibold text-heading ${selected ? 'text-blue-ink' : 'text-fg'}`}>
         {title}
       </Text>
       <Text className="font-outfit text-callout text-muted">{body}</Text>
@@ -89,11 +95,17 @@ export default function OnboardingScreen() {
   const [nationalNumber, setNationalNumber] = useState('');
   const [bio, setBio] = useState('');
 
+  // Read once, on mount. Finishing the `contact` step writes a phone number
+  // onto the session user, and re-deriving this from that would drop the step
+  // out of the flow the instant it was completed — taking the progress bar's
+  // denominator with it.
+  const [needsContact] = useState(() => !user?.phoneNumber);
+
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pending, setPending] = useState(false);
   const { fields: errors, formError, setFields, clearField, capture } = useAuthErrors<FieldName>();
 
-  const steps = stepsFor(accountType);
+  const steps = stepsFor(accountType, needsContact);
   const stepIndex = steps.indexOf(step);
   const isLabel = accountType === 'LABEL';
 
@@ -139,7 +151,7 @@ export default function OnboardingScreen() {
     }
 
     const trimmed = bio.trim();
-    return { ...(trimmed ? { bio: trimmed } : {}), isComplete: true };
+    return { ...(trimmed ? { bio: trimmed } : {}), ...(complete ? { isComplete: true } : {}) };
   }
 
   async function onContinue() {
@@ -149,19 +161,28 @@ export default function OnboardingScreen() {
     setFields(next);
     if (Object.keys(next).length > 0) return;
 
+    // Which step follows is now a question of what `steps` holds, not a fixed
+    // chain — a label whose phone number is already on file has `type` as its
+    // only step, and there is nothing after it to walk to.
+    const following = steps[stepIndex + 1] ?? null;
+
     setPending(true);
     try {
       if (step === 'type') {
         // Creates the artist or label row. Re-callable while onboarding is
         // unfinished, so changing the answer here replaces the row.
         await setAccountType(accountType, name);
-        setStep('contact');
+
+        // `setAccountType` does not carry `isComplete`, so when choosing a type
+        // is the whole of setup it still takes a save of its own to finish.
+        if (following) setStep(following);
+        else await saveProfile({ isComplete: true });
       } else {
         // The save carrying `isComplete` flips `onboardingCompleted`, which
         // re-derives the session status and hands over to the tabs — there is
         // nothing to push.
         await saveProfile(payloadFor(step));
-        if (step === 'contact' && !isLabel) setStep('profile');
+        if (following) setStep(following);
       }
     } catch (error) {
       capture(error, MATCHERS);
@@ -188,165 +209,159 @@ export default function OnboardingScreen() {
     <View className="bg-ink flex-1">
       <StatusBar style="light" />
 
-      <KeyboardAvoidingView
-        className="flex-1"
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
-          <ScrollView
-            contentContainerClassName="grow justify-center px-6 py-8"
-            keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="on-drag"
-            showsVerticalScrollIndicator={false}>
-            <View className="w-full max-w-[400px] gap-6 self-center">
-              {/* A bar rather than pips — a label's flow is two steps and an
+      <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
+        <KeyboardScroll contentContainerClassName="grow justify-center px-6 py-8">
+          <View className="w-full max-w-[400px] gap-6 self-center">
+            <BrandMark />
+
+            {/* A bar rather than pips — a label's flow is two steps and an
                   artist's is three, so a proportion is honest where a fixed
                   row of dots would not be. */}
+            <View className="gap-2">
+              <View className="bg-ink-high h-[4px] overflow-hidden rounded-full">
+                <View
+                  className="bg-blue h-full rounded-full"
+                  style={{ width: `${((stepIndex + 1) / steps.length) * 100}%` }}
+                />
+              </View>
+              <Text className="font-outfit text-caption text-muted">
+                Step {stepIndex + 1} of {steps.length}
+              </Text>
+            </View>
+
+            <Animated.View key={step} entering={FadeInDown.duration(320)} className="gap-6">
               <View className="gap-2">
-                <View className="bg-ink-high h-[4px] overflow-hidden rounded-full">
-                  <View
-                    className="bg-violet h-full rounded-full"
-                    style={{ width: `${((stepIndex + 1) / steps.length) * 100}%` }}
-                  />
-                </View>
-                <Text className="font-outfit text-caption text-muted">
-                  Step {stepIndex + 1} of {steps.length}
-                </Text>
+                <Text className="font-outfit-bold text-display text-fg">{heading}</Text>
+                <Text className="font-outfit text-body text-muted">{subheading}</Text>
               </View>
 
-              <Animated.View key={step} entering={FadeInDown.duration(320)} className="gap-6">
-                <View className="gap-2">
-                  <Text className="font-outfit-bold text-display text-fg">{heading}</Text>
-                  <Text className="font-outfit text-body text-muted">{subheading}</Text>
-                </View>
+              <AuthAlert messages={[formError]} />
 
-                <AuthAlert messages={[formError]} />
-
-                {step === 'type' ? (
-                  <View className="gap-4">
-                    <View className="gap-2">
-                      <TypeCard
-                        selected={accountType === 'ARTIST'}
-                        title="I'm an artist"
-                        body="Release your own music under your name."
-                        onPress={() => setType('ARTIST')}
-                      />
-                      <TypeCard
-                        selected={accountType === 'LABEL'}
-                        title="I'm a label"
-                        body="Release on behalf of artists on your roster."
-                        onPress={() => setType('LABEL')}
-                      />
-                    </View>
-
-                    <FormField
-                      label={isLabel ? 'Label name' : 'Artist name'}
-                      value={name}
-                      onChangeText={(value) => {
-                        setName(value);
-                        clearField('name');
-                      }}
-                      error={errors.name}
-                      placeholder={isLabel ? 'Your label' : 'How you appear on stores'}
-                      autoCapitalize="words"
-                      autoCorrect={false}
-                      maxCount={100}
-                      editable={!pending}
+              {step === 'type' ? (
+                <View className="gap-4">
+                  <View className="gap-2">
+                    <TypeCard
+                      selected={accountType === 'ARTIST'}
+                      title="I'm an artist"
+                      body="Release your own music under your name."
+                      onPress={() => setType('ARTIST')}
+                    />
+                    <TypeCard
+                      selected={accountType === 'LABEL'}
+                      title="I'm a label"
+                      body="Release on behalf of artists on your roster."
+                      onPress={() => setType('LABEL')}
                     />
                   </View>
-                ) : step === 'contact' ? (
-                  <View className="gap-4">
-                    <View className="gap-2">
-                      <Text className="font-outfit-semibold text-label text-muted tracking-[0.2px]">
-                        Phone number
-                      </Text>
-                      <View
-                        className={`rounded-field bg-ink-field flex-row items-center gap-2 border px-4 ${
-                          errors.phoneNumber ? 'border-danger' : 'border-line'
-                        }`}>
-                        <Pressable
-                          onPress={() => setPickerOpen(true)}
-                          disabled={pending}
-                          accessibilityRole="button"
-                          accessibilityLabel={`Calling code, plus ${country.dialCode}`}>
-                          <Text className="font-outfit-semibold text-body text-fg">
-                            +{country.dialCode}
-                          </Text>
-                        </Pressable>
 
-                        <View className="bg-line my-2 w-[1px] self-stretch" />
-
-                        <TextInput
-                          className="font-outfit text-body text-fg flex-1 py-[14px]"
-                          value={nationalNumber}
-                          onChangeText={(value) => {
-                            setNationalNumber(value);
-                            clearField('phoneNumber');
-                          }}
-                          placeholder="801 234 5678"
-                          placeholderTextColor={Brand.muted}
-                          selectionColor={Brand.blue}
-                          keyboardType="phone-pad"
-                          autoComplete="tel"
-                          textContentType="telephoneNumber"
-                          editable={!pending}
-                          accessibilityLabel="Phone number"
-                        />
-                      </View>
-                      <Text
-                        className={`font-outfit text-label ${
-                          errors.phoneNumber ? 'text-danger' : 'text-muted'
-                        }`}>
-                        {errors.phoneNumber ?? `${country.name} · without the leading zero.`}
-                      </Text>
-                    </View>
-                  </View>
-                ) : (
                   <FormField
-                    label="Bio"
-                    value={bio}
+                    label={isLabel ? 'Label name' : 'Artist name'}
+                    value={name}
                     onChangeText={(value) => {
-                      setBio(value);
-                      clearField('bio');
+                      setName(value);
+                      clearField('name');
                     }}
-                    error={errors.bio}
-                    placeholder="Where you're from, what you make…"
-                    multiline
-                    numberOfLines={5}
-                    maxCount={BIO_MAX}
+                    error={errors.name}
+                    placeholder={isLabel ? 'Your label' : 'How you appear on stores'}
+                    autoCapitalize="words"
+                    autoCorrect={false}
+                    maxCount={100}
                     editable={!pending}
-                    style={{ minHeight: 120, textAlignVertical: 'top' }}
                   />
-                )}
-
-                <AuthButton
-                  label={stepIndex === steps.length - 1 ? 'Finish setup' : 'Continue'}
-                  pending={pending}
-                  onPress={() => void onContinue()}
-                />
-
-                {step === 'profile' ? (
-                  <Pressable
-                    onPress={() => void onContinue()}
-                    disabled={pending}
-                    accessibilityRole="button"
-                    className="items-center py-2">
-                    <Text className="font-outfit-semibold text-blue-ink text-[15px]">
-                      Skip for now
+                </View>
+              ) : step === 'contact' ? (
+                <View className="gap-4">
+                  <View className="gap-2">
+                    <Text className="font-outfit-semibold text-label text-muted tracking-[0.2px]">
+                      Phone number
                     </Text>
-                  </Pressable>
-                ) : null}
-              </Animated.View>
+                    <View
+                      className={`rounded-field bg-ink-field flex-row items-center gap-2 border px-4 ${
+                        errors.phoneNumber ? 'border-danger' : 'border-line'
+                      }`}>
+                      <Pressable
+                        onPress={() => setPickerOpen(true)}
+                        disabled={pending}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Calling code, plus ${country.dialCode}`}>
+                        <Text className="font-outfit-semibold text-body text-fg">
+                          +{country.dialCode}
+                        </Text>
+                      </Pressable>
 
-              <View className="flex-row flex-wrap justify-center">
-                <Text className="font-outfit text-muted text-[15px]">Not you? </Text>
-                <Pressable onPress={() => void signOut()} accessibilityRole="button">
-                  <Text className="font-outfit-semibold text-blue-ink text-[15px]">Sign out</Text>
+                      <View className="bg-line my-2 w-[1px] self-stretch" />
+
+                      <TextInput
+                        className="font-outfit text-body text-fg flex-1 py-[14px]"
+                        value={nationalNumber}
+                        onChangeText={(value) => {
+                          setNationalNumber(value);
+                          clearField('phoneNumber');
+                        }}
+                        placeholder="801 234 5678"
+                        placeholderTextColor={Brand.muted}
+                        selectionColor={Brand.blue}
+                        keyboardType="phone-pad"
+                        autoComplete="tel"
+                        textContentType="telephoneNumber"
+                        editable={!pending}
+                        accessibilityLabel="Phone number"
+                      />
+                    </View>
+                    <Text
+                      className={`font-outfit text-label ${
+                        errors.phoneNumber ? 'text-danger' : 'text-muted'
+                      }`}>
+                      {errors.phoneNumber ?? `${country.name} · without the leading zero.`}
+                    </Text>
+                  </View>
+                </View>
+              ) : (
+                <FormField
+                  label="Bio"
+                  value={bio}
+                  onChangeText={(value) => {
+                    setBio(value);
+                    clearField('bio');
+                  }}
+                  error={errors.bio}
+                  placeholder="Where you're from, what you make…"
+                  multiline
+                  numberOfLines={5}
+                  maxCount={BIO_MAX}
+                  editable={!pending}
+                  style={{ minHeight: 120, textAlignVertical: 'top' }}
+                />
+              )}
+
+              <AuthButton
+                label={stepIndex === steps.length - 1 ? 'Finish setup' : 'Continue'}
+                pending={pending}
+                onPress={() => void onContinue()}
+              />
+
+              {step === 'profile' ? (
+                <Pressable
+                  onPress={() => void onContinue()}
+                  disabled={pending}
+                  accessibilityRole="button"
+                  className="items-center py-2">
+                  <Text className="font-outfit-semibold text-blue-ink text-[15px]">
+                    Skip for now
+                  </Text>
                 </Pressable>
-              </View>
+              ) : null}
+            </Animated.View>
+
+            <View className="flex-row flex-wrap justify-center">
+              <Text className="font-outfit text-muted text-[15px]">Not you? </Text>
+              <Pressable onPress={() => void signOut()} accessibilityRole="button">
+                <Text className="font-outfit-semibold text-blue-ink text-[15px]">Sign out</Text>
+              </Pressable>
             </View>
-          </ScrollView>
-        </SafeAreaView>
-      </KeyboardAvoidingView>
+          </View>
+        </KeyboardScroll>
+      </SafeAreaView>
 
       <CountryPicker
         visible={pickerOpen}

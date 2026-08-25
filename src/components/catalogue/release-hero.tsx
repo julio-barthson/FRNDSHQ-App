@@ -33,7 +33,7 @@ export function ReleaseHero({
       <Pressable
         onPress={onPress}
         accessibilityRole="button"
-        className="border-violet-line bg-violet-surface rounded-card items-center gap-4 overflow-hidden border p-6">
+        className="border-blue-line bg-blue-surface rounded-card items-center gap-4 overflow-hidden border p-6">
         <EmptyCatalogue />
         <View className="items-center gap-2">
           <Text className="font-outfit-bold text-title text-fg text-center">
@@ -43,9 +43,17 @@ export function ReleaseHero({
             Add your tracks, artwork and details. We&apos;ll check it over before it goes anywhere.
           </Text>
         </View>
-        <View className="bg-violet active:bg-violet-pressed rounded-button min-h-[48px] w-full items-center justify-center px-6 py-3">
+        {/* `onPress`, not a route of its own. This was pushing `/releases`,
+            which for the only person who ever sees this card — someone with an
+            empty catalogue — is the list they have just come from with nothing
+            in it. The button is the one on-ramp a new artist gets, and it went
+            nowhere. */}
+        <Pressable
+          onPress={onPress}
+          accessibilityRole="button"
+          className="bg-blue active:bg-blue-pressed rounded-button min-h-[48px] w-full items-center justify-center px-6 py-3">
           <Text className="font-outfit-bold text-body text-white">Create a release</Text>
-        </View>
+        </Pressable>
       </Pressable>
     );
   }
@@ -92,7 +100,7 @@ export function ReleaseHero({
               </Text>
             </View>
 
-            <View className="bg-violet rounded-button min-h-[44px] items-center justify-center self-start px-5 py-3">
+            <View className="bg-blue rounded-button min-h-[44px] items-center justify-center self-start px-5 py-3">
               <Text className="font-outfit-bold text-callout text-white">
                 {editable ? 'Finish setup' : 'View release'}
               </Text>

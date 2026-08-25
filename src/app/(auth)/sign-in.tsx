@@ -1,9 +1,11 @@
 import { Link } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useRef, useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, View } from 'react-native';
+import { Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BrandMark } from '@/components/ui/brand-mark';
+import { KeyboardScroll } from '@/components/ui/keyboard-scroll';
 import { AuthAlert } from '@/components/auth/auth-alert';
 import { AuthButton } from '@/components/auth/auth-button';
 import { AuthField } from '@/components/auth/auth-field';
@@ -95,111 +97,101 @@ export default function SignInScreen() {
     <View className="bg-ink flex-1">
       <StatusBar style="light" />
 
-      <KeyboardAvoidingView
-        className="flex-1"
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        {/* `className` does not reach `SafeAreaView` — react-native-css wraps the
-          react-native components and `SafeAreaProvider`, but re-exports this one
-          untouched, so its flex has to be a style. */}
-        <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
-          <ScrollView
-            contentContainerClassName="grow items-center justify-center px-6 py-8"
-            keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="on-drag"
-            showsVerticalScrollIndicator={false}>
-            <View className="w-full max-w-[400px] gap-6">
-              <View className="gap-2">
-                <Text className="font-outfit-bold text-display text-fg">Welcome back</Text>
-                <Text className="font-outfit text-body text-muted">
-                  Sign in to your FRNDSHQ account.
-                </Text>
-              </View>
+      <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
+        <KeyboardScroll contentContainerClassName="grow items-center justify-center px-6 py-8">
+          <View className="w-full max-w-[400px] gap-6">
+            <BrandMark />
+            <View className="gap-2">
+              <Text className="font-outfit-bold text-display text-fg">Welcome back</Text>
+              <Text className="font-outfit text-body text-muted">
+                Sign in to your FRNDSHQ account.
+              </Text>
+            </View>
 
-              <AuthAlert
-                messages={[formError, google.error]}
-                onRetry={isNetworkError ? onSubmit : undefined}
+            <AuthAlert
+              messages={[formError, google.error]}
+              onRetry={isNetworkError ? onSubmit : undefined}
+            />
+
+            <View className="gap-4">
+              <AuthField
+                label="Email"
+                ref={emailRef}
+                value={email}
+                onChangeText={(value) => {
+                  setEmail(value);
+                  clearField('email');
+                }}
+                error={errors.email}
+                placeholder="you@example.com"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                autoComplete="email"
+                textContentType="emailAddress"
+                returnKeyType="next"
+                submitBehavior="submit"
+                onSubmitEditing={() => passwordRef.current?.focus()}
+                editable={!pending}
               />
 
-              <View className="gap-4">
-                <AuthField
-                  label="Email"
-                  ref={emailRef}
-                  value={email}
-                  onChangeText={(value) => {
-                    setEmail(value);
-                    clearField('email');
-                  }}
-                  error={errors.email}
-                  placeholder="you@example.com"
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  autoComplete="email"
-                  textContentType="emailAddress"
-                  returnKeyType="next"
-                  submitBehavior="submit"
-                  onSubmitEditing={() => passwordRef.current?.focus()}
-                  editable={!pending}
-                />
+              <AuthField
+                ref={passwordRef}
+                label="Password"
+                value={password}
+                onChangeText={(value) => {
+                  setPassword(value);
+                  clearField('password');
+                }}
+                error={errors.password}
+                placeholder="Your password"
+                secure
+                autoCapitalize="none"
+                autoCorrect={false}
+                autoComplete="current-password"
+                textContentType="password"
+                returnKeyType="go"
+                onSubmitEditing={onSubmit}
+                editable={!pending}
+              />
 
-                <AuthField
-                  ref={passwordRef}
-                  label="Password"
-                  value={password}
-                  onChangeText={(value) => {
-                    setPassword(value);
-                    clearField('password');
-                  }}
-                  error={errors.password}
-                  placeholder="Your password"
-                  secure
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  autoComplete="current-password"
-                  textContentType="password"
-                  returnKeyType="go"
-                  onSubmitEditing={onSubmit}
-                  editable={!pending}
-                />
-
-                {/* Sits under the password field, right-aligned, where the eye
+              {/* Sits under the password field, right-aligned, where the eye
                     expects it. The class goes on a Text inside the Link so
                     NativeWind is styling a component it knows. */}
-                <View className="self-end">
-                  <Link href="/forgot-password">
-                    <Text className="font-outfit-semibold text-blue-ink text-[14px]">
-                      Forgot password?
-                    </Text>
-                  </Link>
-                </View>
-
-                <AuthButton label="Sign in" pending={pending} onPress={onSubmit} className="mt-2" />
-
-                {GOOGLE_SIGN_IN_ENABLED ? (
-                  <>
-                    <AuthDivider />
-                    <GoogleButton
-                      label="Continue with Google"
-                      onPress={google.signIn}
-                      pending={google.pending}
-                      disabled={!google.ready || pending}
-                    />
-                  </>
-                ) : null}
-              </View>
-
-              <View className="flex-row flex-wrap justify-center">
-                <Text className="font-outfit text-muted text-[15px]">New to FRNDSHQ? </Text>
-                <Link href="/sign-up" replace>
-                  <Text className="font-outfit-semibold text-blue-ink text-[15px]">
-                    Create an account
+              <View className="self-end">
+                <Link href="/forgot-password">
+                  <Text className="font-outfit-semibold text-blue-ink text-[14px]">
+                    Forgot password?
                   </Text>
                 </Link>
               </View>
+
+              <AuthButton label="Sign in" pending={pending} onPress={onSubmit} className="mt-2" />
+
+              {GOOGLE_SIGN_IN_ENABLED ? (
+                <>
+                  <AuthDivider />
+                  <GoogleButton
+                    label="Continue with Google"
+                    onPress={google.signIn}
+                    pending={google.pending}
+                    disabled={!google.ready || pending}
+                  />
+                </>
+              ) : null}
             </View>
-          </ScrollView>
-        </SafeAreaView>
-      </KeyboardAvoidingView>
+
+            <View className="flex-row flex-wrap justify-center">
+              <Text className="font-outfit text-muted text-[15px]">New to FRNDSHQ? </Text>
+              <Link href="/sign-up" replace>
+                <Text className="font-outfit-semibold text-blue-ink text-[15px]">
+                  Create an account
+                </Text>
+              </Link>
+            </View>
+          </View>
+        </KeyboardScroll>
+      </SafeAreaView>
     </View>
   );
 }

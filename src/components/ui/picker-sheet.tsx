@@ -70,7 +70,7 @@ export function PickerSheet({
         <View className="flex-row items-center justify-between px-6 py-4">
           <Text className="font-outfit-bold text-fg text-[18px]">{title}</Text>
           <Pressable onPress={onClose} accessibilityRole="button" hitSlop={12}>
-            <Text className="font-outfit-semibold text-body text-violet-ink">Done</Text>
+            <Text className="font-outfit-semibold text-body text-blue-ink">Done</Text>
           </Pressable>
         </View>
 
@@ -110,7 +110,7 @@ export function PickerSheet({
                 }}>
                 <Text className="font-outfit text-body text-muted flex-1">None</Text>
                 {selected === null ? (
-                  <Ionicons name="checkmark" size={18} color={Brand.violetInk} />
+                  <Ionicons name="checkmark" size={18} color={Brand.blueOnInk} />
                 ) : null}
               </Pressable>
             ) : null
@@ -142,7 +142,7 @@ export function PickerSheet({
                   ) : null}
                 </View>
                 {isSelected ? (
-                  <Ionicons name="checkmark" size={18} color={Brand.violetInk} />
+                  <Ionicons name="checkmark" size={18} color={Brand.blueOnInk} />
                 ) : null}
               </Pressable>
             );

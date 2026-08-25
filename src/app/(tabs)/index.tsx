@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AuthAlert } from '@/components/auth/auth-alert';
 import { ReleaseHero } from '@/components/catalogue/release-hero';
 import { Artwork } from '@/components/catalogue/artwork';
+import { useUnreadCount } from '@/features/notifications/use-unread-count';
 import { Brand } from '@/constants/brand';
 import { useSession } from '@/features/auth/session';
 import { listReleases } from '@/features/catalogue/api';
@@ -98,6 +99,8 @@ export default function HomeScreen() {
         .slice(0, IN_PROGRESS_SHOWN)
     : [];
   const name = user?.firstName ?? null;
+  // Refetched on focus, so coming back from the centre lands on a correct bell.
+  const { unread } = useUnreadCount();
 
   function openRelease(id: string) {
     router.push({ pathname: '/release/[id]', params: { id } });
@@ -115,6 +118,28 @@ export default function HomeScreen() {
           </Text>
         </View>
 
+        {/* The bell sits beside the avatar rather than becoming a fourth tab:
+            three destinations was a deliberate call in `(tabs)/_layout`, and
+            notifications are something you check, not somewhere you live. */}
+        <Pressable
+          onPress={() => router.push('/notifications')}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel={
+            unread > 0 ? `Notifications, ${unread} unread` : 'Notifications'
+          }>
+          <View className="border-line-subtle bg-ink-raised h-[44px] w-[44px] items-center justify-center rounded-full border">
+            <Ionicons name="notifications-outline" size={20} color={Brand.blueOnInk} />
+          </View>
+          {unread > 0 ? (
+            <View className="bg-blue absolute -right-0.5 -top-0.5 h-[18px] min-w-[18px] items-center justify-center rounded-full px-1">
+              <Text className="font-outfit-bold text-[10px] text-white">
+                {unread > 9 ? '9+' : unread}
+              </Text>
+            </View>
+          ) : null}
+        </Pressable>
+
         <Pressable
           onPress={() => router.push('/profile')}
           accessibilityRole="button"
@@ -126,8 +151,8 @@ export default function HomeScreen() {
               contentFit="cover"
             />
           ) : (
-            <View className="border-violet-line bg-violet-surface h-[44px] w-[44px] items-center justify-center rounded-full border">
-              <Text className="font-outfit-bold text-heading text-violet-ink">
+            <View className="border-blue-line bg-blue-surface h-[44px] w-[44px] items-center justify-center rounded-full border">
+              <Text className="font-outfit-bold text-heading text-blue-ink">
                 {(name ?? user?.email ?? '?').charAt(0).toUpperCase()}
               </Text>
             </View>
@@ -144,7 +169,7 @@ export default function HomeScreen() {
             refreshing={refreshing}
             onRefresh={() => void onRefresh()}
             tintColor={Brand.muted}
-            colors={[Brand.violet]}
+            colors={[Brand.blue]}
             progressBackgroundColor={Brand.inkRaised}
           />
         }>
@@ -152,7 +177,7 @@ export default function HomeScreen() {
 
         {releases === null && error === null ? (
           <View className="bg-ink-raised rounded-card h-[260px] items-center justify-center">
-            <ActivityIndicator color={Brand.violetInk} />
+            <ActivityIndicator color={Brand.blueOnInk} />
           </View>
         ) : (
           <ReleaseHero
@@ -166,7 +191,7 @@ export default function HomeScreen() {
             <ActionTile
               icon="add-circle"
               label="New release"
-              tint={Brand.violetInk}
+              tint={Brand.blueOnInk}
               onPress={() => router.push('/new-release')}
             />
             <ActionTile
@@ -213,7 +238,7 @@ export default function HomeScreen() {
                 onPress={() => router.push('/releases')}
                 accessibilityRole="button"
                 hitSlop={12}>
-                <Text className="font-outfit-semibold text-label text-violet-ink">See all</Text>
+                <Text className="font-outfit-semibold text-label text-blue-ink">See all</Text>
               </Pressable>
             </View>
 

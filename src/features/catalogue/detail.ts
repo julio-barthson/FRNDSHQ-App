@@ -21,6 +21,12 @@ export function submissionChecklist(release: ReleaseDetail): ChecklistItem[] {
 
   return [
     { label: 'Cover artwork added', done: Boolean(release.artworkAssetId) },
+    // A release with only featured artists has nobody to bill it to and no
+    // artist page to appear on; stores refuse it, so the API does too.
+    {
+      label: 'Artists named',
+      done: release.contributors.some((row) => row.role === 'PRIMARY_ARTIST'),
+    },
     { label: 'Primary genre set', done: Boolean(release.primaryGenre) },
     { label: 'At least one track', done: release.tracks.length > 0 },
     {

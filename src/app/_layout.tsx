@@ -14,6 +14,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import '@/global.css';
 
 import { Brand } from '@/constants/brand';
+import { ToastProvider } from '@/components/ui/toast';
+import { ThemeProvider } from '@/features/theme/theme';
 import { SessionProvider, useSession } from '@/features/auth/session';
 
 SplashScreen.preventAutoHideAsync();
@@ -54,6 +56,12 @@ function RootNavigator() {
         <Stack.Screen name="edit-release/[id]" options={{ presentation: 'modal' }} />
         <Stack.Screen name="edit-tracks/[id]" options={{ presentation: 'modal' }} />
         <Stack.Screen name="edit-profile" options={{ presentation: 'modal' }} />
+        {/* A destination rather than a modal: it is a list you scroll and page
+            through, and tapping a row pushes onto the release from here. */}
+        <Stack.Screen name="notifications" />
+        <Stack.Screen name="settings/notifications" />
+        <Stack.Screen name="settings/appearance" />
+        <Stack.Screen name="settings/about" />
       </Stack.Protected>
 
       <Stack.Protected guard={status === 'onboarding'}>
@@ -89,10 +97,22 @@ export default function RootLayout() {
     <SessionProvider>
       {/* The ground is set here as well as in the splash config so the native
           splash hands over without a visible change of colour. */}
-      <StatusBar style="light" />
+      {/* `auto` rather than `light`: the bar's glyphs have to invert with the
+          ground, or they vanish into a white screen. */}
+      <StatusBar style="auto" />
       <SafeAreaProvider>
-        <SplashGate fontsReady={fontsReady} />
-        <RootNavigator />
+        {/* Inside SafeAreaProvider because the stack is positioned against the
+            top inset, and outside the navigator so a toast survives a screen
+            change — a "saved" that vanishes with the screen that caused it
+            tells nobody anything. */}
+        {/* Outermost of the two: the toast stack reads theme colours, and the
+            navigator's screens read both. */}
+        <ThemeProvider>
+          <ToastProvider>
+            <SplashGate fontsReady={fontsReady} />
+            <RootNavigator />
+          </ToastProvider>
+        </ThemeProvider>
       </SafeAreaProvider>
     </SessionProvider>
   );

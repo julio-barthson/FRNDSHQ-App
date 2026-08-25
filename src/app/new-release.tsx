@@ -1,25 +1,22 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AuthAlert } from '@/components/auth/auth-alert';
+import { ArtistsSheet } from '@/components/catalogue/artists-sheet';
 import { FormField, SelectField } from '@/components/ui/form-field';
+import { KeyboardScroll } from '@/components/ui/keyboard-scroll';
 import { PickerSheet, type PickerOption } from '@/components/ui/picker-sheet';
+import { ScreenHeader } from '@/components/ui/screen-header';
 import { Brand } from '@/constants/brand';
 import { GENRES } from '@/constants/genres';
+import { useSession } from '@/features/auth/session';
 import { createRelease } from '@/features/catalogue/api';
+import { previewArtist, previewFeatured, typedFeatureWarning } from '@/features/catalogue/billing';
+import type { ContributorInput } from '@/features/catalogue/types';
 import { ApiError } from '@/lib/api';
 
 const MAX_TRACKS = 30;
@@ -40,6 +37,7 @@ const GENRE_OPTIONS: PickerOption[] = GENRES.map((genre) => ({ value: genre, lab
 export default function NewReleaseScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { user } = useSession();
 
   const [title, setTitle] = useState('');
   const [primaryGenre, setPrimaryGenre] = useState<string | null>(null);
@@ -48,6 +46,15 @@ export default function NewReleaseScreen() {
   const [titleError, setTitleError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+
+  // Seeded with the account doing the uploading, which is what the API would
+  // have defaulted to anyway. Showing it rather than assuming it is the whole
+  // point: a filled-in row with an "add" beside it is what tells someone a
+  // feature belongs here and not in the title.
+  const [artistsOpen, setArtistsOpen] = useState(false);
+  const [contributors, setContributors] = useState<ContributorInput[]>(() =>
+    user?.artist?.stageName ? [{ name: user.artist.stageName, role: 'PRIMARY_ARTIST' }] : []
+  );
 
   const filledTracks = trackTitles.map((track) => track.trim()).filter(Boolean);
   const canCreate = Boolean(title.trim()) && filledTracks.length > 0;
@@ -88,12 +95,19 @@ export default function NewReleaseScreen() {
         // `type` is left out on purpose: the API derives it from the track
         // count, so sending one risks disagreeing with what the artist sees.
         ...(primaryGenre ? { primaryGenre } : {}),
+        ...(contributors.length ? { contributors } : {}),
         tracks: filledTracks.map((trackTitle) => ({ title: trackTitle })),
       });
 
       // Straight into the release rather than back to the list — the next
-      // thing to do is add artwork and audio, and both live there.
-      router.replace({ pathname: '/release/[id]', params: { id: created.id } });
+      // thing to do is add artwork and audio, and both live there. `created`
+      // asks that screen to open its what-next sheet: landing on a page of
+      // empty sections says a release exists but not which part of it is the
+      // artist's move.
+      router.replace({
+        pathname: '/release/[id]',
+        params: { id: created.id, created: '1' },
+      });
     } catch (caught) {
       setError(
         caught instanceof ApiError && caught.details.length > 0
@@ -109,116 +123,121 @@ export default function NewReleaseScreen() {
 
   return (
     <View className="bg-ink flex-1" style={{ paddingTop: insets.top }}>
-      <View className="flex-row items-center gap-4 px-4 pt-4 pb-4">
-        <Pressable
-          onPress={() => router.back()}
-          accessibilityRole="button"
-          accessibilityLabel="Close"
-          hitSlop={12}>
-          <Ionicons name="close" size={26} color={Brand.white} />
-        </Pressable>
-        <Text className="font-outfit-bold text-title text-fg flex-1">New release</Text>
-      </View>
+      <ScreenHeader icon="close" label="Close" title="New release" onPress={() => router.back()} />
+      <KeyboardScroll
+        contentContainerClassName="gap-6 px-4"
+        // Clearance for the pinned footer, which the keyboard height is
+        // then added to rather than replacing.
+        bottomInset={insets.bottom + 100}>
+        <AuthAlert messages={[error]} />
 
-      <KeyboardAvoidingView
-        className="flex-1"
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView
-          contentContainerClassName="gap-6 px-4 pb-[140px]"
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
-          showsVerticalScrollIndicator={false}>
-          <AuthAlert messages={[error]} />
+        <Animated.View entering={FadeInDown.duration(340)} className="gap-2">
+          <Text className="font-outfit-medium text-caption text-muted">ABOUT</Text>
+          <View className="bg-ink-raised rounded-card gap-4 p-4">
+            <FormField
+              label="Release title"
+              value={title}
+              onChangeText={(value) => {
+                setTitle(value);
+                if (titleError) setTitleError(null);
+              }}
+              error={titleError}
+              // The API refuses a feature typed in here. Saying so as it is
+              // typed, next to the row that does accept one, is the difference
+              // between a hint and a rejected save.
+              hint={typedFeatureWarning(title) ?? undefined}
+              placeholder="What is it called?"
+              maxCount={MAX_TITLE}
+              autoFocus
+              editable={!pending}
+            />
 
-          <Animated.View entering={FadeInDown.duration(340)} className="gap-2">
-            <Text className="font-outfit-medium text-caption text-muted">ABOUT</Text>
-            <View className="bg-ink-raised rounded-card gap-4 p-4">
-              <FormField
-                label="Release title"
-                value={title}
-                onChangeText={(value) => {
-                  setTitle(value);
-                  if (titleError) setTitleError(null);
-                }}
-                error={titleError}
-                placeholder="What is it called?"
-                maxCount={MAX_TITLE}
-                autoFocus
-                editable={!pending}
-              />
+            {/* Pre-filled with the artist's own name, which is what the API
+                would have assumed anyway. It is here to be *seen*: a feature
+                is the most common thing a release needs beyond a title, and
+                nothing else in this flow says where one goes. */}
+            <SelectField
+              label="Artists"
+              value={previewArtist(contributors) || null}
+              placeholder="Who is this by?"
+              hint={
+                previewFeatured(contributors) ?? 'Tap to credit a featured artist or a co-lead.'
+              }
+              disabled={pending}
+              onPress={() => setArtistsOpen(true)}
+            />
 
-              <SelectField
-                label="Primary genre"
-                value={primaryGenre}
-                placeholder="Choose a genre"
-                hint="You can set this later, but it's needed before you submit."
-                required
-                disabled={pending}
-                onPress={() => setGenreOpen(true)}
-              />
-            </View>
-          </Animated.View>
+            <SelectField
+              label="Primary genre"
+              value={primaryGenre}
+              placeholder="Choose a genre"
+              hint="You can set this later, but it's needed before you submit."
+              required
+              disabled={pending}
+              onPress={() => setGenreOpen(true)}
+            />
+          </View>
+        </Animated.View>
 
-          <Animated.View entering={FadeInDown.delay(60).duration(340)} className="gap-2">
-            <View className="flex-row items-center justify-between">
-              <Text className="font-outfit-medium text-caption text-muted">TRACKS</Text>
-              <Text className="font-outfit text-caption text-muted">
-                {filledTracks.length} of {MAX_TRACKS}
-              </Text>
-            </View>
+        <Animated.View entering={FadeInDown.delay(60).duration(340)} className="gap-2">
+          <View className="flex-row items-center justify-between">
+            <Text className="font-outfit-medium text-caption text-muted">TRACKS</Text>
+            <Text className="font-outfit text-caption text-muted">
+              {filledTracks.length} of {MAX_TRACKS}
+            </Text>
+          </View>
 
-            <View className="bg-ink-raised rounded-card gap-3 p-4">
-              {trackTitles.map((track, index) => (
-                <View key={index} className="flex-row items-center gap-3">
-                  <View className="bg-ink-high h-[32px] w-[32px] items-center justify-center rounded-full">
-                    <Text className="font-outfit-semibold text-label text-muted">{index + 1}</Text>
-                  </View>
-
-                  <TextInput
-                    className="rounded-field border-line bg-ink-field font-outfit text-body text-fg flex-1 border px-4 py-[12px]"
-                    value={track}
-                    onChangeText={(value) => setTrackAt(index, value)}
-                    placeholder={`Track ${index + 1} title`}
-                    placeholderTextColor={Brand.muted}
-                    selectionColor={Brand.blue}
-                    returnKeyType={index === trackTitles.length - 1 ? 'done' : 'next'}
-                    editable={!pending}
-                    accessibilityLabel={`Track ${index + 1} title`}
-                  />
-
-                  {trackTitles.length > 1 ? (
-                    <Pressable
-                      onPress={() => removeTrackAt(index)}
-                      disabled={pending}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Remove track ${index + 1}`}
-                      hitSlop={12}>
-                      <Ionicons name="close-circle" size={20} color={Brand.muted} />
-                    </Pressable>
-                  ) : null}
+          <View className="bg-ink-raised rounded-card gap-3 p-4">
+            {trackTitles.map((track, index) => (
+              <View key={index} className="flex-row items-center gap-3">
+                <View className="bg-ink-high h-[32px] w-[32px] items-center justify-center rounded-full">
+                  <Text className="font-outfit-semibold text-label text-muted">{index + 1}</Text>
                 </View>
-              ))}
 
-              {trackTitles.length < MAX_TRACKS ? (
-                <Pressable
-                  onPress={addTrackRow}
-                  disabled={pending}
-                  accessibilityRole="button"
-                  className="border-line rounded-field active:bg-ink-high flex-row items-center justify-center gap-2 border border-dashed py-3">
-                  <Ionicons name="add" size={18} color={Brand.violetInk} />
-                  <Text className="font-outfit-semibold text-callout text-violet-ink">
-                    Add another track
-                  </Text>
-                </Pressable>
-              ) : null}
+                <TextInput
+                  className="rounded-field border-line bg-ink-field font-outfit text-body text-fg flex-1 border px-4 py-[12px]"
+                  value={track}
+                  onChangeText={(value) => setTrackAt(index, value)}
+                  placeholder={`Track ${index + 1} title`}
+                  placeholderTextColor={Brand.muted}
+                  selectionColor={Brand.blue}
+                  returnKeyType={index === trackTitles.length - 1 ? 'done' : 'next'}
+                  editable={!pending}
+                  accessibilityLabel={`Track ${index + 1} title`}
+                />
 
-              <Text className="font-outfit text-caption text-muted">
-                Titles only for now — you&apos;ll add the audio next.
-              </Text>
-            </View>
-          </Animated.View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+                {trackTitles.length > 1 ? (
+                  <Pressable
+                    onPress={() => removeTrackAt(index)}
+                    disabled={pending}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Remove track ${index + 1}`}
+                    hitSlop={12}>
+                    <Ionicons name="close-circle" size={20} color={Brand.muted} />
+                  </Pressable>
+                ) : null}
+              </View>
+            ))}
+
+            {trackTitles.length < MAX_TRACKS ? (
+              <Pressable
+                onPress={addTrackRow}
+                disabled={pending}
+                accessibilityRole="button"
+                className="border-line rounded-field active:bg-ink-high flex-row items-center justify-center gap-2 border border-dashed py-3">
+                <Ionicons name="add" size={18} color={Brand.blueOnInk} />
+                <Text className="font-outfit-semibold text-callout text-blue-ink">
+                  Add another track
+                </Text>
+              </Pressable>
+            ) : null}
+
+            <Text className="font-outfit text-caption text-muted">
+              Titles only for now — you&apos;ll add the audio next.
+            </Text>
+          </View>
+        </Animated.View>
+      </KeyboardScroll>
 
       <View
         className="border-line-subtle bg-ink absolute right-0 bottom-0 left-0 border-t px-4 pt-3"
@@ -229,7 +248,7 @@ export default function NewReleaseScreen() {
           accessibilityRole="button"
           accessibilityState={{ disabled: !canCreate, busy: pending }}
           className={`rounded-button min-h-[52px] items-center justify-center py-4 ${
-            !canCreate || pending ? 'bg-violet opacity-40' : 'bg-violet active:bg-violet-pressed'
+            !canCreate || pending ? 'bg-blue opacity-40' : 'bg-blue active:bg-blue-pressed'
           }`}>
           {pending ? (
             <ActivityIndicator color={Brand.white} />
@@ -240,6 +259,22 @@ export default function NewReleaseScreen() {
           )}
         </Pressable>
       </View>
+
+      {/* Nothing is saved here — the release does not exist yet, so the sheet
+          edits local state and the list rides along with `createRelease`. */}
+      <ArtistsSheet
+        visible={artistsOpen}
+        scope="release"
+        title={title}
+        contributors={contributors}
+        pending={false}
+        error={null}
+        onCancel={() => setArtistsOpen(false)}
+        onSave={(rows) => {
+          setContributors(rows);
+          setArtistsOpen(false);
+        }}
+      />
 
       <PickerSheet
         visible={genreOpen}

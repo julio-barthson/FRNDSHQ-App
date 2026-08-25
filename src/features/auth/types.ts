@@ -38,6 +38,11 @@ export interface User {
   accountStatus: 'ACTIVE' | 'SUSPENDED' | 'BANNED';
   onboardingCompleted: boolean;
   mustChangePassword: boolean;
+  /**
+   * Whether transactional mail reaches them. Silences email only — the in-app
+   * notification centre is a record, not a preference.
+   */
+  emailNotifications: boolean;
   acceptedTermsAt: string | null;
   termsVersion: string | null;
   createdAt: string;
@@ -80,6 +85,7 @@ export interface ProfileInput {
   bio?: string;
   avatarUrl?: string;
   isComplete?: boolean;
+  emailNotifications?: boolean;
 }
 
 export interface RegisterInput {

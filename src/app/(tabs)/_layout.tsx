@@ -1,8 +1,8 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Tabs } from 'expo-router';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet } from 'react-native';
 
-import { Brand } from '@/constants/brand';
+import { useThemeColors } from '@/features/theme/theme';
 import { FontFamily } from '@/constants/theme';
 
 /**
@@ -23,21 +23,23 @@ import { FontFamily } from '@/constants/theme';
  * a bare glyph reads as library, albums or archive depending on the person.
  */
 export default function TabsLayout() {
+  // Read through the hook, not the `Brand` constant: none of this is reachable
+  // by `className`, so the tab bar would stay black on a light device.
+  const colors = useThemeColors();
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        // Fixed to ink rather than following the system scheme, so the bar
-        // matches the screens above it instead of flipping white on a light
-        // device.
-        sceneStyle: { backgroundColor: Brand.ink },
-        tabBarActiveTintColor: Brand.blueOnInk,
-        tabBarInactiveTintColor: Brand.muted,
+        // Follows the active scheme so the bar matches the screens above it.
+        sceneStyle: { backgroundColor: colors.ink },
+        tabBarActiveTintColor: colors.blueOnInk,
+        tabBarInactiveTintColor: colors.muted,
         tabBarStyle: {
-          backgroundColor: Brand.ink,
+          backgroundColor: colors.ink,
           // The default bar carries a light hairline that reads as a seam on
           // black. `borderSubtle` keeps the separation without the glare.
-          borderTopColor: Brand.borderSubtle,
+          borderTopColor: colors.lineSubtle,
           borderTopWidth: StyleSheet.hairlineWidth,
         },
         // Tab bar styling is prop-shaped — `className` cannot reach any of it,

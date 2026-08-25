@@ -29,6 +29,8 @@ export interface ReleaseSummary {
   submittedAt: string | null;
   createdAt: string;
   trackCount: number;
+  /** The primary artists, joined. Empty on a release created before billing. */
+  displayArtist: string;
   tracks: ReleaseListTrack[];
   /**
    * Presigned and short-lived — the API signs a fresh one per response, so it
@@ -59,6 +61,7 @@ export interface TrackInput {
   explicit?: boolean;
   /** A confirmed AUDIO upload. Optional — a draft may exist before the file. */
   audioAssetId?: string;
+  contributors?: ContributorInput[];
 }
 
 export interface CreateReleaseInput {
@@ -72,12 +75,19 @@ export interface CreateReleaseInput {
   cLine?: string;
   pLine?: string;
   artworkAssetId?: string;
+  /** Omitted, the API bills the release to the uploading artist. */
+  contributors?: ContributorInput[];
   tracks: TrackInput[];
 }
 
+/**
+ * The first three decide billing and the delivered title; the rest are credits
+ * the app stores but does not collect in this phase.
+ */
 export type ContributorRole =
   | 'PRIMARY_ARTIST'
   | 'FEATURED_ARTIST'
+  | 'REMIXER'
   | 'PRODUCER'
   | 'SONGWRITER'
   | 'COMPOSER'
@@ -90,6 +100,15 @@ export interface Contributor {
   name: string;
   role: ContributorRole;
   roleNote: string | null;
+  /** Billing order. "Asake & Olamide" is not "Olamide & Asake". */
+  position: number;
+}
+
+/** What the app sends back. The server renumbers `position` from array order. */
+export interface ContributorInput {
+  name: string;
+  role: ContributorRole;
+  roleNote?: string;
 }
 
 export interface DetailTrack {
@@ -110,6 +129,10 @@ export interface DetailTrack {
   /** Presigned and short-lived, like `artworkUrl`. */
   audioUrl: string | null;
   contributors: Contributor[];
+  /** Composed by the API. Falls back to the release's billing. */
+  displayArtist: string;
+  /** `Song (Chris Lake Remix) [feat. Wizkid]`, composed by the API. */
+  displayTitle: string;
 }
 
 export interface ReleaseDetail {
@@ -134,6 +157,10 @@ export interface ReleaseDetail {
   rightsConfirmedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  contributors: Contributor[];
+  /** The primary artists, joined — the line under the release title. */
+  displayArtist: string;
+  displayTitle: string;
   tracks: DetailTrack[];
 }
 
@@ -154,10 +181,14 @@ export interface UpdateReleaseInput {
   secondaryGenre?: string;
   cLine?: string;
   pLine?: string;
+  /** Replaces the whole list. An empty array clears the billing. */
+  contributors?: ContributorInput[];
 }
 
 export interface UpdateTrackInput {
   title?: string;
   versionTitle?: string;
   explicit?: boolean;
+  /** Replaces the whole list. */
+  contributors?: ContributorInput[];
 }

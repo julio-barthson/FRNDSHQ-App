@@ -1,16 +1,10 @@
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { Platform, Pressable, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BrandMark } from '@/components/ui/brand-mark';
+import { KeyboardScroll } from '@/components/ui/keyboard-scroll';
 import { AuthAlert } from '@/components/auth/auth-alert';
 import { AuthButton } from '@/components/auth/auth-button';
 import { Brand } from '@/constants/brand';
@@ -118,44 +112,38 @@ export default function VerifyEmailScreen() {
     <View className="bg-ink flex-1">
       <StatusBar style="light" />
 
-      <KeyboardAvoidingView
-        className="flex-1"
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
-          <ScrollView
-            contentContainerClassName="grow items-center justify-center px-6 py-8"
-            keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="on-drag"
-            showsVerticalScrollIndicator={false}>
-            <View className="w-full max-w-[400px] gap-6">
-              <View className="gap-2">
-                <Text className="font-outfit-bold text-display text-fg">Confirm your email</Text>
-                <Text className="font-outfit text-body text-muted">
-                  Enter the {OTP_LENGTH}-digit code we sent to{' '}
-                  <Text className="font-outfit-semibold text-fg">
-                    {email ?? 'your email address'}
-                  </Text>
-                  .
+      <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
+        <KeyboardScroll contentContainerClassName="grow items-center justify-center px-6 py-8">
+          <View className="w-full max-w-[400px] gap-6">
+            <BrandMark />
+            <View className="gap-2">
+              <Text className="font-outfit-bold text-display text-fg">Confirm your email</Text>
+              <Text className="font-outfit text-body text-muted">
+                Enter the {OTP_LENGTH}-digit code we sent to{' '}
+                <Text className="font-outfit-semibold text-fg">
+                  {email ?? 'your email address'}
                 </Text>
+                .
+              </Text>
+            </View>
+
+            <AuthAlert
+              messages={[formError]}
+              onRetry={isNetworkError ? () => void submit(otp) : undefined}
+            />
+
+            {!formError && notice ? (
+              <View className="rounded-card border-line bg-ink-raised border p-4">
+                <Text className="font-outfit text-callout text-fg">{notice}</Text>
               </View>
+            ) : null}
 
-              <AuthAlert
-                messages={[formError]}
-                onRetry={isNetworkError ? () => void submit(otp) : undefined}
-              />
-
-              {!formError && notice ? (
-                <View className="rounded-card border-line bg-ink-raised border p-4">
-                  <Text className="font-outfit text-callout text-fg">{notice}</Text>
-                </View>
-              ) : null}
-
-              <View className="gap-4">
-                <View className="gap-2">
-                  <Text className="font-outfit-semibold text-label text-muted tracking-[0.2px]">
-                    Verification code
-                  </Text>
-                  {/* <TextInput
+            <View className="gap-4">
+              <View className="gap-2">
+                <Text className="font-outfit-semibold text-label text-muted tracking-[0.2px]">
+                  Verification code
+                </Text>
+                {/* <TextInput
                     className={`rounded-field bg-ink-field font-outfit-semibold text-fg border px-4 py-4 text-center text-[24px] tracking-[8px] ${
                       fields.otp ? 'border-danger' : 'border-line'
                     }`}
@@ -176,69 +164,69 @@ export default function VerifyEmailScreen() {
                       fields.otp ? `Verification code, error: ${fields.otp}` : 'Verification code'
                     }
                   /> */}
-                  <TextInput
-                    className="border px-4 py-4 text-center"
-                    value={otp}
-                    onChangeText={onChangeOtp}
-                    placeholder="••••••"
-                    placeholderTextColor={Brand.border}
-                    selectionColor={Brand.blue}
-                    keyboardType="number-pad"
-                    maxLength={OTP_LENGTH}
-                    autoFocus
-                    editable={!pending}
-                    textContentType="oneTimeCode"
-                    autoComplete={Platform.OS === 'android' ? 'sms-otp' : 'one-time-code'}
-                    returnKeyType="go"
-                    onSubmitEditing={() => void submit(otp)}
-                    accessibilityLabel={
-                      fields.otp ? `Verification code, error: ${fields.otp}` : 'Verification code'
-                    }
-                  />
-                  {fields.otp ? (
-                    <Text className="font-outfit text-label text-danger">{fields.otp}</Text>
-                  ) : null}
-                </View>
-
-                <AuthButton
-                  label="Confirm email"
-                  pending={pending}
-                  disabled={otp.length !== OTP_LENGTH}
-                  onPress={() => void submit(otp)}
+                <TextInput
+                  className="rounded-md border border-gray-600 bg-gray-800 px-4 py-4 text-[24px] tracking-[8px] text-white"
+                  style={{ textAlign: 'center' }}
+                  value={otp}
+                  onChangeText={onChangeOtp}
+                  placeholder="••••••"
+                  placeholderTextColor={Brand.border}
+                  selectionColor={Brand.blue}
+                  keyboardType="number-pad"
+                  maxLength={OTP_LENGTH}
+                  autoFocus
+                  editable={!pending}
+                  textContentType="oneTimeCode"
+                  autoComplete={Platform.OS === 'android' ? 'sms-otp' : 'one-time-code'}
+                  returnKeyType="go"
+                  onSubmitEditing={() => void submit(otp)}
+                  accessibilityLabel={
+                    fields.otp ? `Verification code, error: ${fields.otp}` : 'Verification code'
+                  }
                 />
-
-                <Pressable
-                  onPress={() => void send()}
-                  disabled={!canResend}
-                  accessibilityRole="button"
-                  className="items-center py-2">
-                  <Text
-                    className={`font-outfit-semibold text-[15px] ${
-                      canResend ? 'text-blue-ink' : 'text-muted'
-                    }`}>
-                    {resending
-                      ? 'Sending a new code…'
-                      : cooldown > 0
-                        ? `Resend code in ${cooldown}s`
-                        : 'Send me a new code'}
-                  </Text>
-                </Pressable>
+                {fields.otp ? (
+                  <Text className="font-outfit text-label text-danger">{fields.otp}</Text>
+                ) : null}
               </View>
 
-              {/* The only way out. Without it an account that mistyped its
-                  address at signup would be stuck on this screen forever. */}
-              <View className="flex-row flex-wrap justify-center">
-                <Text className="font-outfit text-muted text-[15px]">Wrong address? </Text>
-                <Pressable onPress={() => void signOut()} accessibilityRole="button">
-                  <Text className="font-outfit-semibold text-blue-ink text-[15px]">
-                    Sign out and start again
-                  </Text>
-                </Pressable>
-              </View>
+              <AuthButton
+                label="Confirm email"
+                pending={pending}
+                disabled={otp.length !== OTP_LENGTH}
+                onPress={() => void submit(otp)}
+              />
+
+              <Pressable
+                onPress={() => void send()}
+                disabled={!canResend}
+                accessibilityRole="button"
+                className="items-center py-2">
+                <Text
+                  className={`font-outfit-semibold text-[15px] ${
+                    canResend ? 'text-blue-ink' : 'text-muted'
+                  }`}>
+                  {resending
+                    ? 'Sending a new code…'
+                    : cooldown > 0
+                      ? `Resend code in ${cooldown}s`
+                      : 'Send me a new code'}
+                </Text>
+              </Pressable>
             </View>
-          </ScrollView>
-        </SafeAreaView>
-      </KeyboardAvoidingView>
+
+            {/* The only way out. Without it an account that mistyped its
+                  address at signup would be stuck on this screen forever. */}
+            <View className="flex-row flex-wrap justify-center">
+              <Text className="font-outfit text-muted text-[15px]">Wrong address? </Text>
+              <Pressable onPress={() => void signOut()} accessibilityRole="button">
+                <Text className="font-outfit-semibold text-blue-ink text-[15px]">
+                  Sign out and start again
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </KeyboardScroll>
+      </SafeAreaView>
     </View>
   );
 }

@@ -1,5 +1,4 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import { Image } from 'expo-image';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
@@ -11,7 +10,10 @@ import { AuthAlert } from '@/components/auth/auth-alert';
 import { Artwork } from '@/components/catalogue/artwork';
 import { ProgressStrip } from '@/components/catalogue/progress-strip';
 import { STATUS_EXPLAINER, StatusBadge } from '@/components/catalogue/status-badge';
+import { PlayButton, Scrubber } from '@/components/catalogue/track-player';
+import { ActionSheet, type SheetAction } from '@/components/ui/action-sheet';
 import { BackdropScrim, Glow } from '@/components/ui/illustrations';
+import { ScreenHeader, useScrolledPast } from '@/components/ui/screen-header';
 import { Brand } from '@/constants/brand';
 import { deleteRelease, getRelease, submitRelease } from '@/features/catalogue/api';
 import {
@@ -22,6 +24,7 @@ import {
   trackMeta,
 } from '@/features/catalogue/detail';
 import type { DetailTrack, ReleaseDetail } from '@/features/catalogue/types';
+import { isPlayable, useTrackPlayer } from '@/features/catalogue/use-track-player';
 import { ApiError } from '@/lib/api';
 
 const TYPE_LABEL: Record<ReleaseDetail['type'], string> = {
@@ -33,7 +36,7 @@ const TYPE_LABEL: Record<ReleaseDetail['type'], string> = {
 /** Sections drift up in sequence rather than all snapping in at once. */
 function Section({ index, children }: { index: number; children: React.ReactNode }) {
   return (
-    <Animated.View entering={FadeInDown.delay(index * 60).duration(340)} className="gap-2">
+    <Animated.View entering={FadeInDown.delay(index * 60).duration(340)} className="my-2 gap-2">
       {children}
     </Animated.View>
   );
@@ -54,59 +57,10 @@ function Detail({ label, value }: { label: string; value: string | null }) {
   );
 }
 
-function elapsed(seconds: number): string {
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  return `${mins}:${secs.toString().padStart(2, '0')}`;
-}
-
-/**
- * The scrubber. A tappable bar rather than a real slider — a draggable thumb
- * would mean another native dependency for a control used on one screen, and
- * tap-to-seek covers what an artist checking their own master actually does.
- */
-function Scrubber({
-  position,
-  duration,
-  onSeek,
-}: {
-  position: number;
-  duration: number;
-  onSeek: (seconds: number) => void;
-}) {
-  const [width, setWidth] = useState(0);
-  const fraction = duration > 0 ? Math.min(1, position / duration) : 0;
-
-  return (
-    <View className="gap-1">
-      <Pressable
-        accessibilityRole="adjustable"
-        accessibilityLabel="Seek"
-        hitSlop={10}
-        onPress={(event) => {
-          // `locationX` is relative to the bar, so turning it into a time needs
-          // the bar's measured width.
-          if (width > 0 && duration > 0) {
-            onSeek((event.nativeEvent.locationX / width) * duration);
-          }
-        }}
-        onLayout={(event) => setWidth(event.nativeEvent.layout.width)}>
-        <View className="bg-ink-high h-[4px] overflow-hidden rounded-full">
-          <View className="bg-violet h-full rounded-full" style={{ width: `${fraction * 100}%` }} />
-        </View>
-      </Pressable>
-
-      <View className="flex-row justify-between">
-        <Text className="font-outfit text-caption text-muted">{elapsed(position)}</Text>
-        <Text className="font-outfit text-caption text-muted">{elapsed(duration)}</Text>
-      </View>
-    </View>
-  );
-}
-
 function TrackRow({
   track,
   playing,
+  loading,
   position,
   duration,
   onPlay,
@@ -114,13 +68,14 @@ function TrackRow({
 }: {
   track: DetailTrack;
   playing: boolean;
+  loading: boolean;
   position: number;
   duration: number;
   onPlay: () => void;
   onSeek: (seconds: number) => void;
 }) {
   const meta = trackMeta(track);
-  const playable = Boolean(track.audioUrl) && track.status === 'READY';
+  const playable = isPlayable(track);
 
   return (
     <View className="bg-ink-raised rounded-card flex-row items-center gap-3 p-3">
@@ -131,8 +86,7 @@ function TrackRow({
       <View className="flex-1 gap-1">
         <View className="flex-row items-center gap-2">
           <Text className="font-outfit-semibold text-body text-fg flex-1" numberOfLines={1}>
-            {track.title}
-            {track.versionTitle ? ` (${track.versionTitle})` : ''}
+            {track.displayTitle}
           </Text>
           {track.explicit ? (
             <View className="bg-ink-high rounded-[4px] px-1" accessibilityLabel="Explicit content">
@@ -151,13 +105,7 @@ function TrackRow({
       </View>
 
       {playable ? (
-        <Pressable
-          onPress={onPlay}
-          accessibilityRole="button"
-          accessibilityLabel={playing ? `Pause ${track.title}` : `Play ${track.title}`}
-          className="bg-violet active:bg-violet-pressed h-[40px] w-[40px] items-center justify-center rounded-full">
-          <Ionicons name={playing ? 'pause' : 'play'} size={18} color={Brand.white} />
-        </Pressable>
+        <PlayButton playing={playing} loading={loading} label={track.title} onPress={onPlay} />
       ) : null}
     </View>
   );
@@ -166,7 +114,9 @@ function TrackRow({
 export default function ReleaseDetailScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  // `created` is set once, by the new-release screen, and never appears on a
+  // release opened from the list.
+  const { id, created } = useLocalSearchParams<{ id: string; created?: string }>();
 
   const [release, setRelease] = useState<ReleaseDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -174,16 +124,11 @@ export default function ReleaseDetailScreen() {
   const [rightsConfirmed, setRightsConfirmed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [playingTrackId, setPlayingTrackId] = useState<string | null>(null);
 
-  const player = useAudioPlayer();
-  const playerStatus = useAudioPlayerStatus(player);
+  const [nextStepsOpen, setNextStepsOpen] = useState(created === '1');
+  const [submittedOpen, setSubmittedOpen] = useState(false);
 
-  // Without this a master is silent on an iPhone with the ringer switch off,
-  // which reads as a broken upload rather than a muted phone.
-  useEffect(() => {
-    void setAudioModeAsync({ playsInSilentMode: true });
-  }, []);
+  const { scrolled, onScroll } = useScrolledPast(200);
 
   const load = useCallback(async () => {
     try {
@@ -194,6 +139,20 @@ export default function ReleaseDetailScreen() {
       setError(caught instanceof ApiError ? caught.message : 'Could not load this release.');
     }
   }, [id]);
+
+  // Playback URLs are presigned and short-lived. Rather than tracking their
+  // age, the release is fetched again at the moment play is pressed, which
+  // produces a fresh URL and refreshes the screen in the same step.
+  const player = useTrackPlayer(
+    useCallback(
+      async (trackId: string) => {
+        const fresh = await getRelease(id);
+        setRelease(fresh);
+        return fresh.tracks.find((candidate) => candidate.id === trackId)?.audioUrl ?? null;
+      },
+      [id]
+    )
+  );
 
   // Reloads on focus so edits made in the edit modals are reflected on return.
   useFocusEffect(
@@ -213,50 +172,21 @@ export default function ReleaseDetailScreen() {
     return () => clearInterval(timer);
   }, [hasProcessing, load]);
 
-  async function onPlayTrack(track: DetailTrack) {
-    if (!release) return;
-
-    if (playingTrackId === track.id) {
-      player.pause();
-      setPlayingTrackId(null);
-      return;
-    }
-
-    if (!track.audioUrl) return;
-
-    // Playback URLs are presigned and short-lived. Rather than track their age,
-    // ask for the release again so the URL about to be played is fresh.
-    setActionError(null);
-    try {
-      const fresh = await getRelease(release.id);
-      setRelease(fresh);
-
-      const url = fresh.tracks.find((candidate) => candidate.id === track.id)?.audioUrl;
-      if (!url) {
-        setActionError('That track is no longer playable. Reopen the release to refresh it.');
-        return;
-      }
-
-      player.replace({ uri: url });
-      player.play();
-      setPlayingTrackId(track.id);
-    } catch {
-      setActionError('Could not start playback. Please try again.');
-    }
-  }
-
   async function onSubmit() {
     if (!release || submitting) return;
 
     // The screen is about to become read-only; a transport left running over
     // a locked release is confusing.
-    player.pause();
-    setPlayingTrackId(null);
+    player.stop();
 
     setSubmitting(true);
     setActionError(null);
     try {
       setRelease(await submitRelease(release.id));
+      // Submitting is the end of the artist's work and the start of a wait
+      // nothing else on the screen explains. Saying what happens next, and how
+      // long it takes, is the difference between a queue and a silence.
+      setSubmittedOpen(true);
     } catch (caught) {
       // The API returns the same checklist this screen mirrors, as an array —
       // `details` carries every reason, not just the first.
@@ -303,15 +233,15 @@ export default function ReleaseDetailScreen() {
 
   if (!release) {
     return (
-      <View className="bg-ink flex-1 gap-4 px-4" style={{ paddingTop: insets.top + 24 }}>
-        <Pressable onPress={() => router.back()} accessibilityRole="button" hitSlop={12}>
-          <Ionicons name="chevron-back" size={26} color={Brand.blueOnInk} />
-        </Pressable>
-        {error ? (
-          <AuthAlert messages={[error]} onRetry={() => void load()} />
-        ) : (
-          <ActivityIndicator color={Brand.violetInk} />
-        )}
+      <View className="bg-ink flex-1">
+        <ScreenHeader onPress={() => router.back()} />
+        <View className="gap-4 px-4">
+          {error ? (
+            <AuthAlert messages={[error]} onRetry={() => void load()} />
+          ) : (
+            <ActivityIndicator color={Brand.blueOnInk} />
+          )}
+        </View>
       </View>
     );
   }
@@ -330,6 +260,61 @@ export default function ReleaseDetailScreen() {
     .filter(Boolean)
     .join(' · ');
 
+  const footerHeight = editable ? 120 + insets.bottom : 24;
+
+  // The same checklist the card below shows, read as things to go and do. Only
+  // what is still outstanding is offered, and a release that needs nothing gets
+  // the sheet's own copy instead of a list of ticks.
+  const nextSteps: SheetAction[] = [
+    {
+      icon: 'image',
+      label: 'Add cover artwork',
+      hint: '3000 x 3000, JPEG or PNG',
+      done: Boolean(release.artworkAssetId),
+      onPress: () => {
+        setNextStepsOpen(false);
+        router.push({ pathname: '/edit-release/[id]', params: { id: release.id } });
+      },
+    },
+    {
+      icon: 'musical-notes',
+      label: release.tracks.length === 1 ? 'Upload your master' : 'Upload your masters',
+      hint: 'WAV, FLAC or MP3, up to 100MB each',
+      done: release.tracks.length > 0 && release.tracks.every((track) => track.audioAssetId),
+      onPress: () => {
+        setNextStepsOpen(false);
+        router.push({ pathname: '/edit-tracks/[id]', params: { id: release.id } });
+      },
+    },
+    {
+      icon: 'people',
+      label: 'Say who it is by',
+      hint: 'Main artists, and anyone featured',
+      done: release.contributors.some((row) => row.role === 'PRIMARY_ARTIST'),
+      onPress: () => {
+        setNextStepsOpen(false);
+        router.push({ pathname: '/edit-release/[id]', params: { id: release.id } });
+      },
+    },
+    {
+      icon: 'pricetag',
+      label: 'Set the genre and release date',
+      hint: 'Stores need a genre before this can go out',
+      done: Boolean(release.primaryGenre),
+      onPress: () => {
+        setNextStepsOpen(false);
+        router.push({ pathname: '/edit-release/[id]', params: { id: release.id } });
+      },
+    },
+  ];
+
+  const outstanding = nextSteps.filter((step) => !step.done);
+
+  // No horizontal padding on the root. The blurred cover and the pinned header
+  // are both absolute children of it, so the 8px that used to be there inset
+  // the header's ground and left a strip of artwork showing down either side.
+  // The scroll content carries its own `px-4` regardless, which is the padding
+  // every other screen uses.
   return (
     <View className="bg-ink flex-1">
       {/* The cover, blurred, behind the top of the page. Every release gets its
@@ -343,26 +328,40 @@ export default function ReleaseDetailScreen() {
             blurRadius={60}
           />
         ) : (
-          <View className="bg-violet-surface absolute inset-0" />
+          <View className="bg-blue-surface absolute inset-0" />
         )}
         <View className="absolute inset-0">
           <BackdropScrim />
         </View>
       </View>
 
-      <ScrollView
-        contentContainerClassName={`gap-6 px-4 ${editable ? 'pb-[180px]' : 'pb-16'}`}
-        contentContainerStyle={{ paddingTop: insets.top + 16 }}
-        showsVerticalScrollIndicator={false}>
-        <Pressable
-          onPress={() => router.back()}
-          accessibilityRole="button"
-          accessibilityLabel="Back"
-          hitSlop={12}
-          className="self-start">
-          <Ionicons name="chevron-back" size={26} color={Brand.white} />
-        </Pressable>
+      {/* Outside the scroll view, so it stays put. Back used to be the first
+          thing in the content, which meant that on a long release the only way
+          off the screen was to flick all the way back to the top for it. */}
+      <ScreenHeader
+        floating
+        scrolled={scrolled}
+        title={release.title}
+        subtitle={meta}
+        onPress={() => router.back()}
+      />
 
+      <ScrollView
+        // One style prop, no class list. Both insets are dynamic so they cannot
+        // be classes, and react-native-css overwrites rather than merges when a
+        // `contentContainerStyle` meets a `contentContainerClassName` — the gap
+        // and the side padding were being thrown away by the style sitting next
+        // to them.
+        contentContainerStyle={{
+          gap: 24,
+          paddingHorizontal: 16,
+          // Clears the pinned header, which is out of the flow above this.
+          paddingTop: insets.top + 72,
+          paddingBottom: footerHeight,
+        }}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
+        showsVerticalScrollIndicator={false}>
         <View className="items-center gap-4 px-4">
           <View className="h-[200px] w-[200px] items-center justify-center">
             {/* Sits behind the cover, larger than it, so the falloff shows. */}
@@ -378,7 +377,17 @@ export default function ReleaseDetailScreen() {
           </View>
 
           <View className="items-center gap-2">
-            <Text className="font-outfit-bold text-title text-fg text-center">{release.title}</Text>
+            {/* The composed string rather than the raw title. A feature lives in
+                the metadata, and this is where the artist sees what that
+                actually produces. */}
+            <Text className="font-outfit-bold text-title text-fg text-center">
+              {release.displayTitle}
+            </Text>
+            {release.displayArtist ? (
+              <Text className="font-outfit-semibold text-callout text-blue-ink text-center">
+                {release.displayArtist}
+              </Text>
+            ) : null}
             <Text className="font-outfit text-callout text-muted">{meta}</Text>
             <StatusBadge status={release.status} />
             {explainer ? (
@@ -387,7 +396,7 @@ export default function ReleaseDetailScreen() {
           </View>
         </View>
 
-        <AuthAlert messages={[actionError]} />
+        <AuthAlert messages={[actionError, player.error]} />
 
         {/* Only once it has entered the process. A draft is not in any queue. */}
         {!editable ? (
@@ -423,7 +432,7 @@ export default function ReleaseDetailScreen() {
                   towards submitting rather than a tally of what is missing. */}
               <View className="bg-ink-high h-[4px] overflow-hidden rounded-full">
                 <View
-                  className={`h-full rounded-full ${ready ? 'bg-positive' : 'bg-violet'}`}
+                  className={`h-full rounded-full ${ready ? 'bg-positive' : 'bg-blue'}`}
                   style={{ width: `${(doneCount / checklist.length) * 100}%` }}
                 />
               </View>
@@ -479,11 +488,12 @@ export default function ReleaseDetailScreen() {
               <TrackRow
                 key={track.id}
                 track={track}
-                playing={playingTrackId === track.id && playerStatus.playing}
-                position={playerStatus.currentTime ?? 0}
-                duration={playerStatus.duration ?? track.durationSec ?? 0}
-                onPlay={() => void onPlayTrack(track)}
-                onSeek={(seconds) => void player.seekTo(seconds)}
+                playing={player.playingId === track.id && player.playing}
+                loading={player.loadingId === track.id}
+                position={player.position}
+                duration={player.duration || (track.durationSec ?? 0)}
+                onPlay={() => void player.toggle(track)}
+                onSeek={player.seek}
               />
             ))
           )}
@@ -491,7 +501,8 @@ export default function ReleaseDetailScreen() {
 
         <Section index={3}>
           <SectionHeading>DETAILS</SectionHeading>
-          <View className="bg-ink-raised rounded-card px-4 py-2">
+          <View className="bg-ink-raised rounded-card mb-4 px-4 py-2">
+            <Detail label="Artists" value={release.displayArtist || null} />
             <Detail label="Primary genre" value={release.primaryGenre} />
             <Detail label="Secondary genre" value={release.secondaryGenre} />
             <Detail label="Language" value={release.language} />
@@ -512,7 +523,7 @@ export default function ReleaseDetailScreen() {
               onPress={onDelete}
               disabled={deleting}
               accessibilityRole="button"
-              className="rounded-button border-danger-line active:bg-danger-surface mb-20 min-h-[52px] items-center justify-center border py-4">
+              className="rounded-button border-danger-line active:bg-danger-surface mb-2 min-h-[52px] items-center justify-center border py-4">
               {deleting ? (
                 <ActivityIndicator color={Brand.danger} />
               ) : (
@@ -537,7 +548,7 @@ export default function ReleaseDetailScreen() {
             className="flex-row items-center gap-3">
             <View
               className={`h-[22px] w-[22px] items-center justify-center rounded-[6px] border-[1.5px] ${
-                rightsConfirmed ? 'border-violet bg-violet' : 'border-line'
+                rightsConfirmed ? 'border-blue bg-blue' : 'border-line'
               }`}>
               {rightsConfirmed ? (
                 <Text className="font-outfit-bold text-label text-white">✓</Text>
@@ -555,8 +566,8 @@ export default function ReleaseDetailScreen() {
             accessibilityState={{ disabled: !ready || !rightsConfirmed, busy: submitting }}
             className={`rounded-button min-h-[52px] items-center justify-center py-4 ${
               !ready || !rightsConfirmed || submitting
-                ? 'bg-violet opacity-40'
-                : 'bg-violet active:bg-violet-pressed'
+                ? 'bg-blue opacity-40'
+                : 'bg-blue active:bg-blue-pressed'
             }`}>
             {submitting ? (
               <ActivityIndicator color={Brand.white} />
@@ -568,6 +579,30 @@ export default function ReleaseDetailScreen() {
           </Pressable>
         </View>
       ) : null}
+
+      <ActionSheet
+        visible={nextStepsOpen}
+        eyebrow="RELEASE CREATED"
+        title={outstanding.length > 0 ? "Here's what's left" : `${release.title} is ready`}
+        body={
+          outstanding.length > 0
+            ? 'Nothing is sent anywhere until you submit it, so you can do these in any order and come back whenever.'
+            : 'Everything we need is on it. Confirm the rights at the bottom of this page and send it for review.'
+        }
+        actions={outstanding}
+        dismissLabel={outstanding.length > 0 ? "I'll do this later" : 'Take me to it'}
+        onClose={() => setNextStepsOpen(false)}
+      />
+
+      <ActionSheet
+        visible={submittedOpen}
+        eyebrow="SUBMITTED"
+        tone="positive"
+        title="It's with us"
+        body={`${release.title} is in the review queue. We check the audio, the artwork and the metadata against what stores accept — usually within two working days. You'll be told either way, and if anything needs changing you'll get the reason and the release will reopen for editing. It stays locked until then.`}
+        dismissLabel="Got it"
+        onClose={() => setSubmittedOpen(false)}
+      />
     </View>
   );
 }

@@ -43,7 +43,7 @@ export async function pickArtwork(): Promise<LocalFile | null> {
   const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!permission.granted) {
     throw new PickerError(
-      'FRNDSHQ needs access to your photos to set cover artwork. You can grant it in Settings.',
+      'FRNDSHQ needs access to your photos to set cover artwork. You can grant it in Settings.'
     );
   }
 
@@ -62,8 +62,7 @@ export async function pickArtwork(): Promise<LocalFile | null> {
 
   const measured = await measure(asset.uri);
   const extension = extensionOf(asset.fileName ?? asset.uri) || 'jpg';
-  const mimeType =
-    asset.mimeType ?? measured.mimeType ?? mimeFromExtension(extension);
+  const mimeType = asset.mimeType ?? measured.mimeType ?? mimeFromExtension(extension);
 
   return {
     uri: asset.uri,

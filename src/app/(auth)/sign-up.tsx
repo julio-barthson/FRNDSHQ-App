@@ -1,18 +1,11 @@
 import { Link } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useRef, useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BrandMark } from '@/components/ui/brand-mark';
+import { KeyboardScroll } from '@/components/ui/keyboard-scroll';
 import { AuthAlert } from '@/components/auth/auth-alert';
 import { AuthButton } from '@/components/auth/auth-button';
 import { AuthField } from '@/components/auth/auth-field';
@@ -172,235 +165,222 @@ export default function SignUpScreen() {
     <View className="bg-ink flex-1">
       <StatusBar style="light" />
 
-      <KeyboardAvoidingView
-        className="flex-1"
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        {/* `className` does not reach `SafeAreaView` — react-native-css wraps the
-          react-native components and `SafeAreaProvider`, but re-exports this one
-          untouched, so its flex has to be a style. */}
-        <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
-          <ScrollView
-            contentContainerClassName="grow items-center justify-center px-6 py-8"
-            keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="on-drag"
-            showsVerticalScrollIndicator={false}>
-            <View className="w-full max-w-[400px] gap-6">
-              <View className="gap-2">
-                <Text className="font-outfit-bold text-display text-fg">Create your account</Text>
-                <Text className="font-outfit text-body text-muted">
-                  Set up your artist profile on FRNDSHQ.
-                </Text>
-              </View>
+      <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
+        <KeyboardScroll contentContainerClassName="grow items-center justify-center px-6 py-8">
+          <View className="w-full max-w-[400px] gap-6">
+            <BrandMark />
+            <View className="gap-2">
+              <Text className="font-outfit-bold text-display text-fg">Create your account</Text>
+              <Text className="font-outfit text-body text-muted">
+                Set up your artist profile on FRNDSHQ.
+              </Text>
+            </View>
 
-              <AuthAlert
-                messages={[formError, google.error]}
-                onRetry={isNetworkError ? onSubmit : undefined}
+            <AuthAlert
+              messages={[formError, google.error]}
+              onRetry={isNetworkError ? onSubmit : undefined}
+            />
+
+            <View className="gap-4">
+              <AuthField
+                ref={emailRef}
+                label="Email"
+                autoFocus
+                value={email}
+                onChangeText={(value) => {
+                  setEmail(value);
+                  clearField('email');
+                }}
+                error={errors.email}
+                placeholder="you@example.com"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                autoComplete="email"
+                textContentType="emailAddress"
+                returnKeyType="next"
+                submitBehavior="submit"
+                onSubmitEditing={() => phoneRef.current?.focus()}
+                editable={!pending}
               />
 
-              <View className="gap-4">
-                <AuthField
-                  ref={emailRef}
-                  label="Email"
-                  autoFocus
-                  value={email}
-                  onChangeText={(value) => {
-                    setEmail(value);
-                    clearField('email');
+              <View className="gap-2">
+                <Text className="font-outfit-semibold text-label text-muted tracking-[0.2px]">
+                  Country
+                </Text>
+                <Pressable
+                  onPress={() => {
+                    clearField('country');
+                    setPickerOpen(true);
                   }}
-                  error={errors.email}
-                  placeholder="you@example.com"
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  autoComplete="email"
-                  textContentType="emailAddress"
-                  returnKeyType="next"
-                  submitBehavior="submit"
-                  onSubmitEditing={() => phoneRef.current?.focus()}
-                  editable={!pending}
-                />
-
-                <View className="gap-2">
-                  <Text className="font-outfit-semibold text-label text-muted tracking-[0.2px]">
-                    Country
-                  </Text>
-                  <Pressable
-                    onPress={() => {
-                      clearField('country');
-                      setPickerOpen(true);
-                    }}
-                    disabled={pending}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Country, ${country.name}`}
-                    className={`rounded-field bg-ink-field flex-row items-center justify-between border px-4 py-[15px] ${
-                      errors.country ? 'border-danger' : 'border-line'
-                    }`}>
-                    <Text className="font-outfit text-body text-fg">{country.name}</Text>
-                    <Text className="font-outfit text-muted text-[14px]">▾</Text>
-                  </Pressable>
-                  {errors.country ? (
-                    <Text className="font-outfit text-label text-danger">{errors.country}</Text>
-                  ) : null}
-                </View>
-
-                <View className="gap-2">
-                  <Text className="font-outfit-semibold text-label text-muted tracking-[0.2px]">
-                    Phone number
-                  </Text>
-                  <View
-                    className={`rounded-field bg-ink-field min-h-12 flex-row items-center gap-2 border px-4 ${
-                      errors.phoneNumber ? 'border-danger' : 'border-line'
-                    }`}>
-                    <Pressable
-                      onPress={() => setPickerOpen(true)}
-                      disabled={pending}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Calling code, plus ${country.dialCode}`}>
-                      <Text className="font-outfit-semibold text-body text-fg">
-                        +{country.dialCode}
-                      </Text>
-                    </Pressable>
-                    {/* `hairlineWidth` is a runtime value — there is no class for it. */}
-                    <View
-                      className="bg-line my-2 self-stretch"
-                      style={{ width: StyleSheet.hairlineWidth }}
-                    />
-                    <TextInput
-                      ref={phoneRef}
-                      className="font-outfit text-body text-fg flex-1 py-[14px]"
-                      value={nationalNumber}
-                      onChangeText={(value) => {
-                        setNationalNumber(value);
-                        clearField('phoneNumber');
-                      }}
-                      placeholder="801 234 5678"
-                      placeholderTextColor={Brand.muted}
-                      selectionColor={Brand.blue}
-                      keyboardType="phone-pad"
-                      autoComplete="tel"
-                      textContentType="telephoneNumber"
-                      editable={!pending}
-                    />
-                  </View>
-                  <Text
-                    className={`font-outfit text-label ${
-                      errors.phoneNumber ? 'text-danger' : 'text-muted'
-                    }`}>
-                    {errors.phoneNumber ?? 'Without the leading zero.'}
-                  </Text>
-                </View>
-
-                <AuthField
-                  ref={passwordRef}
-                  label="Password"
-                  value={password}
-                  onChangeText={(value) => {
-                    setPassword(value);
-                    clearField('password');
-                  }}
-                  error={errors.password}
-                  placeholder="At least 8 characters"
-                  secure
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  autoComplete="new-password"
-                  textContentType="newPassword"
-                  returnKeyType="next"
-                  submitBehavior="submit"
-                  onSubmitEditing={() => confirmRef.current?.focus()}
-                  editable={!pending}
-                />
-                {errors.password ? null : (
-                  <Text className="font-outfit text-label text-muted">
-                    Must include at least one letter and one number.
-                  </Text>
-                )}
-
-                <AuthField
-                  ref={confirmRef}
-                  label="Confirm password"
-                  value={confirmPassword}
-                  onChangeText={(value) => {
-                    setConfirmPassword(value);
-                    clearField('confirmPassword');
-                  }}
-                  error={errors.confirmPassword}
-                  placeholder="Re-enter your password"
-                  secure
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  autoComplete="new-password"
-                  textContentType="newPassword"
-                  returnKeyType="go"
-                  onSubmitEditing={onSubmit}
-                  editable={!pending}
-                />
-
-                <View className="gap-2">
-                  <Pressable
-                    onPress={() => {
-                      setAcceptTerms((value) => !value);
-                      clearField('acceptTerms');
-                    }}
-                    disabled={pending}
-                    accessibilityRole="checkbox"
-                    accessibilityState={{ checked: acceptTerms }}
-                    className="flex-row items-start gap-4 py-1">
-                    {/* `mt-px` nudges the box onto the first line's optical centre. */}
-                    <View
-                      className={`mt-px h-[22px] w-[22px] items-center justify-center rounded-[6px] border-[1.5px] ${
-                        acceptTerms ? 'border-blue bg-blue' : 'border-line'
-                      }`}>
-                      {acceptTerms ? (
-                        <Text className="font-outfit-bold text-label text-white">✓</Text>
-                      ) : null}
-                    </View>
-                    <Text className="font-outfit text-callout text-fg flex-1">
-                      I agree to the FRNDSHQ Terms of Service and Privacy Policy.
-                    </Text>
-                  </Pressable>
-                  {errors.acceptTerms ? (
-                    <Text className="font-outfit text-label text-danger">{errors.acceptTerms}</Text>
-                  ) : null}
-                </View>
-
-                <AuthButton
-                  label="Create account"
-                  pending={pending}
-                  onPress={onSubmit}
-                  className="mt-2"
-                />
-
-                {GOOGLE_SIGN_IN_ENABLED ? (
-                  <>
-                    <AuthDivider />
-                    <GoogleButton
-                      label="Continue with Google"
-                      onPress={google.signIn}
-                      pending={google.pending}
-                      disabled={!google.ready || pending}
-                    />
-                    <Text className="font-outfit text-label text-muted">
-                      Continuing with Google also accepts the FRNDSHQ Terms of Service and Privacy
-                      Policy.
-                    </Text>
-                  </>
+                  disabled={pending}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Country, ${country.name}`}
+                  className={`rounded-field bg-ink-field flex-row items-center justify-between border px-4 py-[15px] ${
+                    errors.country ? 'border-danger' : 'border-line'
+                  }`}>
+                  <Text className="font-outfit text-body text-fg">{country.name}</Text>
+                  <Text className="font-outfit text-muted text-[14px]">▾</Text>
+                </Pressable>
+                {errors.country ? (
+                  <Text className="font-outfit text-label text-danger">{errors.country}</Text>
                 ) : null}
               </View>
 
-              <View className="flex-row flex-wrap justify-center">
-                <Text className="font-outfit text-muted text-[15px]">
-                  Already have an account?{' '}
+              <View className="gap-2">
+                <Text className="font-outfit-semibold text-label text-muted tracking-[0.2px]">
+                  Phone number
                 </Text>
-                <Link href="/sign-in" replace>
-                  <Text className="font-outfit-semibold text-blue-ink text-[15px]">Sign in</Text>
-                </Link>
+                <View
+                  className={`rounded-field bg-ink-field min-h-12 flex-row items-center gap-2 border px-4 ${
+                    errors.phoneNumber ? 'border-danger' : 'border-line'
+                  }`}>
+                  <Pressable
+                    onPress={() => setPickerOpen(true)}
+                    disabled={pending}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Calling code, plus ${country.dialCode}`}>
+                    <Text className="font-outfit-semibold text-body text-fg">
+                      +{country.dialCode}
+                    </Text>
+                  </Pressable>
+                  {/* `hairlineWidth` is a runtime value — there is no class for it. */}
+                  <View
+                    className="bg-line my-2 self-stretch"
+                    style={{ width: StyleSheet.hairlineWidth }}
+                  />
+                  <TextInput
+                    ref={phoneRef}
+                    className="font-outfit text-body text-fg flex-1 py-[14px]"
+                    value={nationalNumber}
+                    onChangeText={(value) => {
+                      setNationalNumber(value);
+                      clearField('phoneNumber');
+                    }}
+                    placeholder="801 234 5678"
+                    placeholderTextColor={Brand.muted}
+                    selectionColor={Brand.blue}
+                    keyboardType="phone-pad"
+                    autoComplete="tel"
+                    textContentType="telephoneNumber"
+                    editable={!pending}
+                  />
+                </View>
+                <Text
+                  className={`font-outfit text-label ${
+                    errors.phoneNumber ? 'text-danger' : 'text-muted'
+                  }`}>
+                  {errors.phoneNumber ?? 'Without the leading zero.'}
+                </Text>
               </View>
-            </View>
-          </ScrollView>
-        </SafeAreaView>
-      </KeyboardAvoidingView>
 
+              <AuthField
+                ref={passwordRef}
+                label="Password"
+                value={password}
+                onChangeText={(value) => {
+                  setPassword(value);
+                  clearField('password');
+                }}
+                error={errors.password}
+                placeholder="At least 8 characters"
+                secure
+                autoCapitalize="none"
+                autoCorrect={false}
+                autoComplete="new-password"
+                textContentType="newPassword"
+                returnKeyType="next"
+                submitBehavior="submit"
+                onSubmitEditing={() => confirmRef.current?.focus()}
+                editable={!pending}
+              />
+              {errors.password ? null : (
+                <Text className="font-outfit text-label text-muted">
+                  Must include at least one letter and one number.
+                </Text>
+              )}
+
+              <AuthField
+                ref={confirmRef}
+                label="Confirm password"
+                value={confirmPassword}
+                onChangeText={(value) => {
+                  setConfirmPassword(value);
+                  clearField('confirmPassword');
+                }}
+                error={errors.confirmPassword}
+                placeholder="Re-enter your password"
+                secure
+                autoCapitalize="none"
+                autoCorrect={false}
+                autoComplete="new-password"
+                textContentType="newPassword"
+                returnKeyType="go"
+                onSubmitEditing={onSubmit}
+                editable={!pending}
+              />
+
+              <View className="gap-2">
+                <Pressable
+                  onPress={() => {
+                    setAcceptTerms((value) => !value);
+                    clearField('acceptTerms');
+                  }}
+                  disabled={pending}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: acceptTerms }}
+                  className="flex-row items-start gap-4 py-1">
+                  {/* `mt-px` nudges the box onto the first line's optical centre. */}
+                  <View
+                    className={`mt-px h-[22px] w-[22px] items-center justify-center rounded-[6px] border-[1.5px] ${
+                      acceptTerms ? 'border-blue bg-blue' : 'border-line'
+                    }`}>
+                    {acceptTerms ? (
+                      <Text className="font-outfit-bold text-label text-white">✓</Text>
+                    ) : null}
+                  </View>
+                  <Text className="font-outfit text-callout text-fg flex-1">
+                    I agree to the FRNDSHQ Terms of Service and Privacy Policy.
+                  </Text>
+                </Pressable>
+                {errors.acceptTerms ? (
+                  <Text className="font-outfit text-label text-danger">{errors.acceptTerms}</Text>
+                ) : null}
+              </View>
+
+              <AuthButton
+                label="Create account"
+                pending={pending}
+                onPress={onSubmit}
+                className="mt-2"
+              />
+
+              {GOOGLE_SIGN_IN_ENABLED ? (
+                <>
+                  <AuthDivider />
+                  <GoogleButton
+                    label="Continue with Google"
+                    onPress={google.signIn}
+                    pending={google.pending}
+                    disabled={!google.ready || pending}
+                  />
+                  <Text className="font-outfit text-label text-muted">
+                    Continuing with Google also accepts the FRNDSHQ Terms of Service and Privacy
+                    Policy.
+                  </Text>
+                </>
+              ) : null}
+            </View>
+
+            <View className="flex-row flex-wrap justify-center">
+              <Text className="font-outfit text-muted text-[15px]">Already have an account? </Text>
+              <Link href="/sign-in" replace>
+                <Text className="font-outfit-semibold text-blue-ink text-[15px]">Sign in</Text>
+              </Link>
+            </View>
+          </View>
+        </KeyboardScroll>
+      </SafeAreaView>
       <CountryPicker
         visible={pickerOpen}
         selectedCode={country.code}

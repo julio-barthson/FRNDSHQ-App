@@ -25,6 +25,7 @@ import { Artwork } from '@/components/catalogue/artwork';
 import { STATUS_EXPLAINER, StatusBadge } from '@/components/catalogue/status-badge';
 import { EmptyCatalogue, EmptySearch } from '@/components/ui/illustrations';
 import { Brand } from '@/constants/brand';
+import { useSession } from '@/features/auth/session';
 import { listReleases } from '@/features/catalogue/api';
 import { totalRuntime } from '@/features/catalogue/detail';
 import type { ReleaseStatus, ReleaseSummary } from '@/features/catalogue/types';
@@ -62,6 +63,17 @@ function metaLine(release: ReleaseSummary): string {
   const runtime = totalRuntime(release.tracks);
   const tracks = `${release.trackCount} ${release.trackCount === 1 ? 'track' : 'tracks'}`;
   return [TYPE_LABEL[release.type], tracks, runtime].filter(Boolean).join(' · ');
+}
+
+/**
+ * Every release in this list belongs to the artist looking at it, so their own
+ * name on every row would be noise. It earns its place only when the release is
+ * by more than them — which is exactly the case worth spotting at a glance.
+ */
+function collaboratorLine(release: ReleaseSummary, self: string | null): string | null {
+  const artist = release.displayArtist;
+  if (!artist || (self && artist === self)) return null;
+  return artist;
 }
 
 /** A slow pulse, so loading reads as pending rather than broken. */
@@ -102,13 +114,16 @@ function SkeletonCard() {
 function ReleaseRow({
   release,
   index,
+  self,
   onPress,
 }: {
   release: ReleaseSummary;
   index: number;
+  self: string | null;
   onPress: () => void;
 }) {
   const explainer = STATUS_EXPLAINER[release.status];
+  const collaborators = collaboratorLine(release, self);
 
   return (
     <Animated.View entering={FadeInDown.delay(Math.min(index, MAX_STAGGER) * 50).duration(320)}>
@@ -130,6 +145,12 @@ function ReleaseRow({
             <StatusBadge status={release.status} />
           </View>
 
+          {collaborators ? (
+            <Text className="font-outfit-medium text-label text-blue-ink" numberOfLines={1}>
+              {collaborators}
+            </Text>
+          ) : null}
+
           <Text className="font-outfit text-label text-muted">{metaLine(release)}</Text>
 
           {explainer ? (
@@ -146,12 +167,16 @@ function ReleaseRow({
 function ReleaseCard({
   release,
   index,
+  self,
   onPress,
 }: {
   release: ReleaseSummary;
   index: number;
+  self: string | null;
   onPress: () => void;
 }) {
+  const collaborators = collaboratorLine(release, self);
+
   return (
     <Animated.View
       entering={FadeInDown.delay(Math.min(index, MAX_STAGGER) * 50).duration(320)}
@@ -180,7 +205,7 @@ function ReleaseCard({
             {release.title}
           </Text>
           <Text className="font-outfit text-label text-muted" numberOfLines={1}>
-            {metaLine(release)}
+            {collaborators ?? metaLine(release)}
           </Text>
         </View>
       </Pressable>
@@ -191,6 +216,8 @@ function ReleaseCard({
 export default function ReleasesScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { user } = useSession();
+  const self = user?.artist?.stageName ?? null;
 
   const [releases, setReleases] = useState<ReleaseSummary[] | null>(null);
   const [total, setTotal] = useState(0);
@@ -304,7 +331,7 @@ export default function ReleasesScreen() {
                 accessibilityLabel={`${option} view`}
                 accessibilityState={{ selected: mode === option }}
                 className={`h-[32px] w-[36px] items-center justify-center rounded-full ${
-                  mode === option ? 'bg-violet' : ''
+                  mode === option ? 'bg-blue' : ''
                 }`}>
                 <Ionicons
                   name={option === 'grid' ? 'grid' : 'list'}
@@ -320,7 +347,7 @@ export default function ReleasesScreen() {
             accessibilityRole="button"
             accessibilityLabel="Create a release"
             hitSlop={12}
-            className="bg-violet active:bg-violet-pressed h-[40px] w-[40px] items-center justify-center rounded-full">
+            className="bg-blue active:bg-blue-pressed h-[40px] w-[40px] items-center justify-center rounded-full">
             <Ionicons name="add" size={24} color={Brand.white} />
           </Pressable>
         </View>
@@ -364,7 +391,7 @@ export default function ReleasesScreen() {
                 accessibilityState={{ selected }}
                 className={`rounded-full border px-4 py-2 ${
                   selected
-                    ? 'border-violet bg-violet'
+                    ? 'border-blue bg-blue'
                     : 'border-line bg-ink-raised active:bg-ink-high'
                 }`}>
                 <Text
@@ -421,9 +448,19 @@ export default function ReleasesScreen() {
           onEndReached={() => void onEndReached()}
           renderItem={({ item, index }) =>
             mode === 'grid' ? (
-              <ReleaseCard release={item} index={index} onPress={() => openRelease(item.id)} />
+              <ReleaseCard
+                release={item}
+                index={index}
+                self={self}
+                onPress={() => openRelease(item.id)}
+              />
             ) : (
-              <ReleaseRow release={item} index={index} onPress={() => openRelease(item.id)} />
+              <ReleaseRow
+                release={item}
+                index={index}
+                self={self}
+                onPress={() => openRelease(item.id)}
+              />
             )
           }
           refreshControl={
@@ -431,14 +468,14 @@ export default function ReleasesScreen() {
               refreshing={refreshing}
               onRefresh={() => void onRefresh()}
               tintColor={Brand.muted}
-              colors={[Brand.violet]}
+              colors={[Brand.blue]}
               progressBackgroundColor={Brand.inkRaised}
             />
           }
           ListFooterComponent={
             loadingMore ? (
               <View className="py-6">
-                <ActivityIndicator color={Brand.violetInk} />
+                <ActivityIndicator color={Brand.blueOnInk} />
               </View>
             ) : null
           }
@@ -459,7 +496,7 @@ export default function ReleasesScreen() {
               <Pressable
                 onPress={filtered ? clearFilters : () => router.push('/new-release')}
                 accessibilityRole="button"
-                className="bg-violet active:bg-violet-pressed rounded-button mt-2 min-h-[52px] w-full items-center justify-center py-4">
+                className="bg-blue active:bg-blue-pressed rounded-button mt-2 min-h-[52px] w-full items-center justify-center py-4">
                 <Text className="font-outfit-bold text-body text-white">
                   {filtered ? 'Clear filters' : 'Create a release'}
                 </Text>

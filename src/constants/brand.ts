@@ -26,6 +26,13 @@ export const Brand = {
   borderSubtle: '#1E1E22',
   borderFocus: '#0A84FF',
 
+  /**
+   * Blue, and the only accent.
+   *
+   * A second one — a blue for "expression", with blue doing the work — was
+   * dropped on 2026-08-25 at the client's direction: the brand is blue, white
+   * and black. Everything the blue carried now uses these.
+   */
   /** Button and control fills, with white on top. */
   blue: '#0A84FF',
   bluePressed: '#0968CC',
@@ -34,15 +41,9 @@ export const Brand = {
    * reaches 5.8:1 against black; this is 8.8:1, so it clears AAA at body size.
    */
   blueOnInk: '#5CACFF',
-
-  /**
-   * Violet, the second accent. Blue drives primary actions; violet carries
-   * expression — the release hero, artwork placeholders, the illustrations.
-   * Same split as blue: the fill is 4.9:1 on black, `violetInk` is 9.9:1.
-   */
-  violet: '#7C5CFF',
-  violetPressed: '#6344E0',
-  violetInk: '#B9A5FF',
+  /** Tinted panels, and the hairline around one. */
+  blueSurface: '#0B1E33',
+  blueLine: '#153452',
 
   white: '#FFFFFF',
   text: '#E8EFF6',

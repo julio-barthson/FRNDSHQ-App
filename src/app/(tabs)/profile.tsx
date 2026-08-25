@@ -1,67 +1,35 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
+import Constants from 'expo-constants';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import * as WebBrowser from 'expo-web-browser';
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Glow } from '@/components/ui/illustrations';
-import { Brand } from '@/constants/brand';
-import { findCountry } from '@/constants/countries';
+import { SettingsLink, SettingsSection } from '@/components/ui/settings-row';
+import { useTheme, type ThemePreference } from '@/features/theme/theme';
 import { useSession } from '@/features/auth/session';
 import { API_BASE, GOOGLE_SIGN_IN_ENABLED } from '@/lib/env';
 
-const TERMS_URL = 'https://frndshq.com/terms';
-const PRIVACY_URL = 'https://frndshq.com/privacy';
-
-function SectionHeading({ children }: { children: string }) {
-  return <Text className="font-outfit-medium text-caption text-muted">{children}</Text>;
-}
-
-function Row({
-  label,
-  value,
-  icon,
-  onPress,
-}: {
-  label: string;
-  value?: string | null;
-  icon?: keyof typeof Ionicons.glyphMap;
-  onPress?: () => void;
-}) {
-  const content = (
-    <View className="flex-row items-center gap-3 py-3">
-      {icon ? <Ionicons name={icon} size={18} color={Brand.muted} /> : null}
-      <Text className="font-outfit text-callout text-fg flex-1">{label}</Text>
-      {value ? (
-        <Text className="font-outfit text-callout text-muted" numberOfLines={1}>
-          {value}
-        </Text>
-      ) : null}
-      {onPress ? <Ionicons name="chevron-forward" size={16} color={Brand.muted} /> : null}
-    </View>
-  );
-
-  if (!onPress) return content;
-
-  return (
-    <Pressable onPress={onPress} accessibilityRole="button" className="active:opacity-70">
-      {content}
-    </Pressable>
-  );
-}
+/** The legal links moved to Settings › About, which is where a store looks. */
+const APPEARANCE_LABEL: Record<ThemePreference, string> = {
+  system: 'Device',
+  light: 'Light',
+  dark: 'Dark',
+};
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user, signOut } = useSession();
+  const { preference } = useTheme();
+
+  const version = Constants.expoConfig?.version ?? '1.0.0';
 
   // Exactly one of these is set once onboarding has chosen.
   const displayName = user?.artist?.stageName ?? user?.label?.name ?? null;
   const avatarUrl = user?.artist?.avatarUrl ?? user?.label?.logoUrl ?? user?.image ?? null;
   const isLabel = user?.label != null;
-  const country = findCountry(user?.country ?? '');
   const bio = user?.artist?.bio ?? null;
 
   function confirmSignOut() {
@@ -89,8 +57,8 @@ export default function ProfileScreen() {
                 contentFit="cover"
               />
             ) : (
-              <View className="border-violet-line bg-violet-surface h-[96px] w-[96px] items-center justify-center rounded-full border">
-                <Text className="font-outfit-bold text-display text-violet-ink">
+              <View className="border-blue-line bg-blue-surface h-[96px] w-[96px] items-center justify-center rounded-full border">
+                <Text className="font-outfit-bold text-display text-blue-ink">
                   {(displayName ?? user?.email ?? '?').charAt(0).toUpperCase()}
                 </Text>
               </View>
@@ -102,8 +70,8 @@ export default function ProfileScreen() {
               {displayName ?? 'Your profile'}
             </Text>
 
-            <View className="border-violet-line bg-violet-surface rounded-full border px-3 py-[3px]">
-              <Text className="font-outfit-medium text-caption text-violet-ink">
+            <View className="border-blue-line bg-blue-surface rounded-full border px-3 py-[3px]">
+              <Text className="font-outfit-medium text-caption text-blue-ink">
                 {isLabel ? 'Label' : 'Artist'}
               </Text>
             </View>
@@ -121,36 +89,51 @@ export default function ProfileScreen() {
           </Pressable>
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.delay(60).duration(340)} className="gap-2">
-          <SectionHeading>ACCOUNT</SectionHeading>
-          <View className="bg-ink-raised rounded-card px-4 py-1">
-            <Row label="Email" value={user?.email} />
-            <Row
-              label="Email verified"
-              value={user?.emailVerified ? 'Yes' : 'Not yet'}
-              icon={undefined}
+        <Animated.View entering={FadeInDown.delay(60).duration(340)}>
+          <SettingsSection title="Account">
+            <SettingsLink
+              icon="person-circle-outline"
+              label="Profile"
+              value="Name, photo, details"
+              onPress={() => router.push('/edit-profile')}
+              first
             />
-            <Row label="Phone" value={user?.phoneNumber ?? 'Not set'} />
-            <Row label="Country" value={country?.name ?? 'Not set'} />
-          </View>
+            <SettingsLink
+              icon="mail-outline"
+              label="Email"
+              value={user?.emailVerified ? user?.email : 'Not verified'}
+              onPress={() => router.push('/edit-profile')}
+            />
+          </SettingsSection>
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.delay(120).duration(340)} className="gap-2">
-          <SectionHeading>LEGAL</SectionHeading>
-          <View className="bg-ink-raised rounded-card px-4 py-1">
-            {/* Opened in the in-app browser rather than leaving the app —
-                both stores expect these to be reachable from inside it. */}
-            <Row
-              label="Terms of Service"
-              icon="document-text-outline"
-              onPress={() => void WebBrowser.openBrowserAsync(TERMS_URL)}
+        <Animated.View entering={FadeInDown.delay(120).duration(340)}>
+          <SettingsSection title="Preferences">
+            <SettingsLink
+              icon="notifications-outline"
+              label="Notifications"
+              onPress={() => router.push('/settings/notifications')}
+              first
             />
-            <Row
-              label="Privacy Policy"
-              icon="lock-closed-outline"
-              onPress={() => void WebBrowser.openBrowserAsync(PRIVACY_URL)}
+            <SettingsLink
+              icon="color-palette-outline"
+              label="Appearance"
+              value={APPEARANCE_LABEL[preference]}
+              onPress={() => router.push('/settings/appearance')}
             />
-          </View>
+          </SettingsSection>
+        </Animated.View>
+
+        <Animated.View entering={FadeInDown.delay(180).duration(340)}>
+          <SettingsSection title="Support">
+            <SettingsLink
+              icon="information-circle-outline"
+              label="About"
+              value={`Version ${version}`}
+              onPress={() => router.push('/settings/about')}
+              first
+            />
+          </SettingsSection>
         </Animated.View>
 
         {/* Kept from the session smoke test. Which host the app resolved is the

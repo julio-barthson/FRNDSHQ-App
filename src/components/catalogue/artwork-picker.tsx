@@ -87,7 +87,7 @@ export function ArtworkPicker({
 
           {/* The badge is the affordance — without it a cover reads as a
               picture rather than something you can replace. */}
-          <View className="bg-violet absolute right-2 bottom-2 h-[36px] w-[36px] items-center justify-center rounded-full">
+          <View className="bg-blue absolute right-2 bottom-2 h-[36px] w-[36px] items-center justify-center rounded-full">
             <Ionicons name={artworkUrl ? 'pencil' : 'camera'} size={18} color={Brand.white} />
           </View>
         </View>

@@ -7,8 +7,8 @@ import { Brand } from '@/constants/brand';
 /** Marks a field the submission checklist blocks on. */
 function RequiredChip() {
   return (
-    <View className="border-violet-line bg-violet-surface rounded-full border px-2 py-[2px]">
-      <Text className="font-outfit-medium text-caption text-violet-ink">Required to submit</Text>
+    <View className="border-blue-line bg-blue-surface rounded-full border px-2 py-[2px]">
+      <Text className="font-outfit-medium text-caption text-blue-ink">Required to submit</Text>
     </View>
   );
 }
@@ -58,7 +58,7 @@ export const FormField = forwardRef<TextInput, FormFieldProps>(function FormFiel
   ref
 ) {
   const [focused, setFocused] = useState(false);
-  const borderClass = error ? 'border-danger' : focused ? 'border-violet' : 'border-line';
+  const borderClass = error ? 'border-danger' : focused ? 'border-blue' : 'border-line';
   const value = typeof rest.value === 'string' ? rest.value : '';
 
   return (

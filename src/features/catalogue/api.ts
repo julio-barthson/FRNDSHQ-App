@@ -55,9 +55,13 @@ export function setReleaseArtwork(releaseId: string, artworkAssetId: string) {
 /**
  * Attaches confirmed audio to a track. The server starts validation from here,
  * so the track moves to PROCESSING and reaches READY or FAILED on its own.
+ *
+ * Like every track endpoint, this returns the whole release rather than the
+ * track — `TracksService.reload` — so a caller can re-render from the reply
+ * instead of fetching again.
  */
 export function setTrackAudio(releaseId: string, trackId: string, audioAssetId: string) {
-  return request<unknown>(`/releases/${releaseId}/tracks/${trackId}`, {
+  return request<ReleaseDetail>(`/releases/${releaseId}/tracks/${trackId}`, {
     method: 'PATCH',
     body: { audioAssetId },
   });
@@ -76,14 +80,14 @@ export function updateRelease(id: string, input: UpdateReleaseInput) {
  * an EP or album first, which {@link updateRelease} can do.
  */
 export function addTrack(releaseId: string, title: string) {
-  return request<unknown>(`/releases/${releaseId}/tracks`, {
+  return request<ReleaseDetail>(`/releases/${releaseId}/tracks`, {
     method: 'POST',
     body: { title },
   });
 }
 
 export function updateTrack(releaseId: string, trackId: string, input: UpdateTrackInput) {
-  return request<unknown>(`/releases/${releaseId}/tracks/${trackId}`, {
+  return request<ReleaseDetail>(`/releases/${releaseId}/tracks/${trackId}`, {
     method: 'PATCH',
     body: input,
   });
@@ -91,8 +95,19 @@ export function updateTrack(releaseId: string, trackId: string, input: UpdateTra
 
 /** Refused when it would leave the release with no tracks. */
 export function removeTrack(releaseId: string, trackId: string) {
-  return request<unknown>(`/releases/${releaseId}/tracks/${trackId}`, {
+  return request<ReleaseDetail>(`/releases/${releaseId}/tracks/${trackId}`, {
     method: 'DELETE',
+  });
+}
+
+/**
+ * `PATCH /releases/{id}/tracks/order`. Takes every track id in its new order —
+ * the API rejects a partial list rather than guessing what the rest should be.
+ */
+export function reorderTracks(releaseId: string, trackIds: string[]) {
+  return request<ReleaseDetail>(`/releases/${releaseId}/tracks/order`, {
+    method: 'PATCH',
+    body: { trackIds },
   });
 }
 

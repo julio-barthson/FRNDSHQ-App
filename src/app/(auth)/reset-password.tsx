@@ -1,17 +1,11 @@
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { Platform, Pressable, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BrandMark } from '@/components/ui/brand-mark';
+import { KeyboardScroll } from '@/components/ui/keyboard-scroll';
 import { AuthAlert } from '@/components/auth/auth-alert';
 import { AuthButton } from '@/components/auth/auth-button';
 import { AuthField } from '@/components/auth/auth-field';
@@ -182,200 +176,188 @@ export default function ResetPasswordScreen() {
     <View className="bg-ink flex-1">
       <StatusBar style="light" />
 
-      <KeyboardAvoidingView
-        className="flex-1"
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        {/* `className` does not reach `SafeAreaView` — react-native-css wraps the
-          react-native components and `SafeAreaProvider`, but re-exports this one
-          untouched, so its flex has to be a style. */}
-        <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
-          <ScrollView
-            contentContainerClassName="grow items-center justify-center px-6 py-8"
-            keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="on-drag"
-            showsVerticalScrollIndicator={false}>
-            <View className="w-full max-w-[400px] gap-6">
-              {stage === 'done' ? (
-                <>
-                  <View className="gap-2">
-                    <Text className="font-outfit-bold text-display text-fg">Password updated</Text>
-                    <Text className="font-outfit text-body text-muted">
-                      You&apos;ve been signed out everywhere else. Sign in with your new password.
-                    </Text>
-                  </View>
+      <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
+        <KeyboardScroll contentContainerClassName="grow items-center justify-center px-6 py-8">
+          <View className="w-full max-w-[400px] gap-6">
+            <BrandMark />
+            {stage === 'done' ? (
+              <>
+                <View className="gap-2">
+                  <Text className="font-outfit-bold text-display text-fg">Password updated</Text>
+                  <Text className="font-outfit text-body text-muted">
+                    You&apos;ve been signed out everywhere else. Sign in with your new password.
+                  </Text>
+                </View>
 
-                  <AuthButton label="Back to sign in" onPress={() => router.replace('/sign-in')} />
-                </>
-              ) : (
-                <>
-                  <View className="gap-2">
-                    <Text className="font-outfit-bold text-display text-fg">
-                      {stage === 'code' ? 'Enter your code' : 'Choose a new password'}
-                    </Text>
-                    <Text className="font-outfit text-body text-muted">
-                      {stage === 'code' ? (
-                        <>
-                          We sent a {OTP_LENGTH}-digit code to{' '}
-                          <Text className="font-outfit-semibold text-fg">
-                            {email || 'your email address'}
-                          </Text>
-                          . It expires in 10 minutes.
-                        </>
-                      ) : (
-                        'Pick something you have not used on FRNDSHQ before.'
-                      )}
-                    </Text>
-                  </View>
-
-                  <AuthAlert
-                    messages={[formError]}
-                    onRetry={
-                      isNetworkError
-                        ? stage === 'code'
-                          ? () => void checkCode(otp)
-                          : onSubmitPassword
-                        : undefined
-                    }
-                  />
-
-                  {/* The notice is not an error, so it keeps its own calmer
-                      treatment — and yields to the banner when both apply. */}
-                  {!formError && notice ? (
-                    <View className="rounded-card border-line bg-ink-raised border p-4">
-                      <Text className="font-outfit text-callout text-fg">{notice}</Text>
-                    </View>
-                  ) : null}
-
-                  <View className="gap-4">
+                <AuthButton label="Back to sign in" onPress={() => router.replace('/sign-in')} />
+              </>
+            ) : (
+              <>
+                <View className="gap-2">
+                  <Text className="font-outfit-bold text-display text-fg">
+                    {stage === 'code' ? 'Enter your code' : 'Choose a new password'}
+                  </Text>
+                  <Text className="font-outfit text-body text-muted">
                     {stage === 'code' ? (
                       <>
-                        <View className="gap-2">
-                          <Text className="font-outfit-semibold text-label text-muted tracking-[0.2px]">
-                            Reset code
-                          </Text>
-                          <TextInput
-                            className={`rounded-field bg-ink-field font-outfit-semibold text-fg border px-4 py-4 text-center text-[24px] tracking-[8px] ${
-                              errors.otp ? 'border-danger' : 'border-line'
-                            }`}
-                            value={otp}
-                            ref={otpRef}
-                            onChangeText={onChangeOtp}
-                            placeholder="••••••"
-                            placeholderTextColor={Brand.border}
-                            selectionColor={Brand.blue}
-                            keyboardType="number-pad"
-                            maxLength={OTP_LENGTH}
-                            autoFocus
-                            editable={!pending}
-                            textContentType="oneTimeCode"
-                            autoComplete={Platform.OS === 'android' ? 'sms-otp' : 'one-time-code'}
-                            returnKeyType="go"
-                            onSubmitEditing={() => void checkCode(otp)}
-                            accessibilityLabel="Reset code"
-                          />
-                          {errors.otp ? (
-                            <Text className="font-outfit text-label text-danger">{errors.otp}</Text>
-                          ) : null}
-                        </View>
-
-                        <AuthButton
-                          label="Continue"
-                          pending={pending}
-                          disabled={otp.length !== OTP_LENGTH}
-                          onPress={() => void checkCode(otp)}
-                        />
+                        We sent a {OTP_LENGTH}-digit code to{' '}
+                        <Text className="font-outfit-semibold text-fg">
+                          {email || 'your email address'}
+                        </Text>
+                        . It expires in 10 minutes.
                       </>
                     ) : (
-                      <>
-                        <AuthField
-                          label="New password"
-                          value={password}
-                          ref={passwordRef}
-                          onChangeText={(value) => {
-                            setPassword(value);
-                            clearField('newPassword');
-                          }}
-                          error={errors.newPassword}
-                          placeholder="At least 8 characters"
-                          secure
-                          autoCapitalize="none"
-                          autoCorrect={false}
-                          autoComplete="new-password"
-                          textContentType="newPassword"
-                          autoFocus
-                          returnKeyType="next"
-                          submitBehavior="submit"
-                          onSubmitEditing={() => confirmRef.current?.focus()}
-                          editable={!pending}
-                        />
-                        {errors.newPassword ? null : (
-                          <Text className="font-outfit text-label text-muted">
-                            Must include at least one letter and one number.
-                          </Text>
-                        )}
-
-                        <AuthField
-                          ref={confirmRef}
-                          label="Confirm new password"
-                          value={confirmPassword}
-                          onChangeText={(value) => {
-                            setConfirmPassword(value);
-                            clearField('confirmPassword');
-                          }}
-                          error={errors.confirmPassword}
-                          placeholder="Re-enter your new password"
-                          secure
-                          autoCapitalize="none"
-                          autoCorrect={false}
-                          autoComplete="new-password"
-                          textContentType="newPassword"
-                          returnKeyType="go"
-                          onSubmitEditing={onSubmitPassword}
-                          editable={!pending}
-                        />
-
-                        <AuthButton
-                          label="Update password"
-                          pending={pending}
-                          onPress={onSubmitPassword}
-                          className="mt-2"
-                        />
-                      </>
+                      'Pick something you have not used on FRNDSHQ before.'
                     )}
+                  </Text>
+                </View>
 
-                    <Pressable
-                      onPress={() => void onResend()}
-                      disabled={!canResend}
-                      accessibilityRole="button"
-                      className="items-center py-2">
-                      <Text
-                        className={`font-outfit-semibold text-[15px] ${
-                          canResend ? 'text-blue-ink' : 'text-muted'
-                        }`}>
-                        {resending
-                          ? 'Sending a new code…'
-                          : cooldown > 0
-                            ? `Resend code in ${cooldown}s`
-                            : 'Send me a new code'}
-                      </Text>
-                    </Pressable>
-                  </View>
+                <AuthAlert
+                  messages={[formError]}
+                  onRetry={
+                    isNetworkError
+                      ? stage === 'code'
+                        ? () => void checkCode(otp)
+                        : onSubmitPassword
+                      : undefined
+                  }
+                />
 
-                  <View className="flex-row flex-wrap justify-center">
-                    <Pressable
-                      onPress={() => router.replace('/sign-in')}
-                      accessibilityRole="button">
-                      <Text className="font-outfit-semibold text-blue-ink text-[15px]">
-                        Back to sign in
-                      </Text>
-                    </Pressable>
+                {/* The notice is not an error, so it keeps its own calmer
+                      treatment — and yields to the banner when both apply. */}
+                {!formError && notice ? (
+                  <View className="rounded-card border-line bg-ink-raised border p-4">
+                    <Text className="font-outfit text-callout text-fg">{notice}</Text>
                   </View>
-                </>
-              )}
-            </View>
-          </ScrollView>
-        </SafeAreaView>
-      </KeyboardAvoidingView>
+                ) : null}
+
+                <View className="gap-4">
+                  {stage === 'code' ? (
+                    <>
+                      <View className="gap-2">
+                        <Text className="font-outfit-semibold text-label text-muted tracking-[0.2px]">
+                          Reset code
+                        </Text>
+                        <TextInput
+                          className={`rounded-field bg-ink-field font-outfit-semibold text-fg border px-4 py-4 text-center text-[24px] tracking-[8px] ${
+                            errors.otp ? 'border-danger' : 'border-line'
+                          }`}
+                          value={otp}
+                          ref={otpRef}
+                          onChangeText={onChangeOtp}
+                          placeholder="••••••"
+                          placeholderTextColor={Brand.border}
+                          selectionColor={Brand.blue}
+                          keyboardType="number-pad"
+                          maxLength={OTP_LENGTH}
+                          autoFocus
+                          editable={!pending}
+                          textContentType="oneTimeCode"
+                          autoComplete={Platform.OS === 'android' ? 'sms-otp' : 'one-time-code'}
+                          returnKeyType="go"
+                          onSubmitEditing={() => void checkCode(otp)}
+                          accessibilityLabel="Reset code"
+                        />
+                        {errors.otp ? (
+                          <Text className="font-outfit text-label text-danger">{errors.otp}</Text>
+                        ) : null}
+                      </View>
+
+                      <AuthButton
+                        label="Continue"
+                        pending={pending}
+                        disabled={otp.length !== OTP_LENGTH}
+                        onPress={() => void checkCode(otp)}
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <AuthField
+                        label="New password"
+                        value={password}
+                        ref={passwordRef}
+                        onChangeText={(value) => {
+                          setPassword(value);
+                          clearField('newPassword');
+                        }}
+                        error={errors.newPassword}
+                        placeholder="At least 8 characters"
+                        secure
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        autoComplete="new-password"
+                        textContentType="newPassword"
+                        autoFocus
+                        returnKeyType="next"
+                        submitBehavior="submit"
+                        onSubmitEditing={() => confirmRef.current?.focus()}
+                        editable={!pending}
+                      />
+                      {errors.newPassword ? null : (
+                        <Text className="font-outfit text-label text-muted">
+                          Must include at least one letter and one number.
+                        </Text>
+                      )}
+
+                      <AuthField
+                        ref={confirmRef}
+                        label="Confirm new password"
+                        value={confirmPassword}
+                        onChangeText={(value) => {
+                          setConfirmPassword(value);
+                          clearField('confirmPassword');
+                        }}
+                        error={errors.confirmPassword}
+                        placeholder="Re-enter your new password"
+                        secure
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        autoComplete="new-password"
+                        textContentType="newPassword"
+                        returnKeyType="go"
+                        onSubmitEditing={onSubmitPassword}
+                        editable={!pending}
+                      />
+
+                      <AuthButton
+                        label="Update password"
+                        pending={pending}
+                        onPress={onSubmitPassword}
+                        className="mt-2"
+                      />
+                    </>
+                  )}
+
+                  <Pressable
+                    onPress={() => void onResend()}
+                    disabled={!canResend}
+                    accessibilityRole="button"
+                    className="items-center py-2">
+                    <Text
+                      className={`font-outfit-semibold text-[15px] ${
+                        canResend ? 'text-blue-ink' : 'text-muted'
+                      }`}>
+                      {resending
+                        ? 'Sending a new code…'
+                        : cooldown > 0
+                          ? `Resend code in ${cooldown}s`
+                          : 'Send me a new code'}
+                    </Text>
+                  </Pressable>
+                </View>
+
+                <View className="flex-row flex-wrap justify-center">
+                  <Pressable onPress={() => router.replace('/sign-in')} accessibilityRole="button">
+                    <Text className="font-outfit-semibold text-blue-ink text-[15px]">
+                      Back to sign in
+                    </Text>
+                  </Pressable>
+                </View>
+              </>
+            )}
+          </View>
+        </KeyboardScroll>
+      </SafeAreaView>
     </View>
   );
 }
