@@ -21,6 +21,15 @@ import { useAuthErrors } from '@/features/auth/use-auth-errors';
 const E164_PATTERN = /^\+[1-9]\d{6,14}$/;
 const BIO_MAX = 500;
 
+/**
+ * Label accounts exist as far as the profile row and no further. A LABEL
+ * account has no `artist` row, and `catalogue.access.ts#artistFor()` throws a
+ * 403 for every account without one — so Home, Releases and create all fail
+ * for a label, and the answer given here can never be changed. Roster
+ * management is Phase 2; turn this back on once a label has somewhere to go.
+ */
+const LABEL_ACCOUNTS_ENABLED = false;
+
 type FieldName = 'accountType' | 'name' | 'phoneNumber' | 'country' | 'bio';
 
 const MATCHERS: Matchers<FieldName> = {
@@ -193,14 +202,18 @@ export default function OnboardingScreen() {
 
   const heading =
     step === 'type'
-      ? 'What are you setting up?'
+      ? LABEL_ACCOUNTS_ENABLED
+        ? 'What are you setting up?'
+        : 'Set up your artist profile'
       : step === 'contact'
         ? 'How do we reach you?'
         : 'Tell us about yourself';
 
   const subheading =
     step === 'type'
-      ? 'This decides how your catalogue is organised. You can only choose once.'
+      ? LABEL_ACCOUNTS_ENABLED
+        ? 'This decides how your catalogue is organised. You can only choose once.'
+        : 'Your artist name goes on every release. You can change it later in your profile.'
       : step === 'contact'
         ? 'Used for account security and release notices, never shown publicly.'
         : 'A short introduction for your profile. You can skip this and add it later.';
@@ -239,20 +252,22 @@ export default function OnboardingScreen() {
 
               {step === 'type' ? (
                 <View className="gap-4">
-                  <View className="gap-2">
-                    <TypeCard
-                      selected={accountType === 'ARTIST'}
-                      title="I'm an artist"
-                      body="Release your own music under your name."
-                      onPress={() => setType('ARTIST')}
-                    />
-                    <TypeCard
-                      selected={accountType === 'LABEL'}
-                      title="I'm a label"
-                      body="Release on behalf of artists on your roster."
-                      onPress={() => setType('LABEL')}
-                    />
-                  </View>
+                  {LABEL_ACCOUNTS_ENABLED ? (
+                    <View className="gap-2">
+                      <TypeCard
+                        selected={accountType === 'ARTIST'}
+                        title="I'm an artist"
+                        body="Release your own music under your name."
+                        onPress={() => setType('ARTIST')}
+                      />
+                      <TypeCard
+                        selected={accountType === 'LABEL'}
+                        title="I'm a label"
+                        body="Release on behalf of artists on your roster."
+                        onPress={() => setType('LABEL')}
+                      />
+                    </View>
+                  ) : null}
 
                   <FormField
                     label={isLabel ? 'Label name' : 'Artist name'}

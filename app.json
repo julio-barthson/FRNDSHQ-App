@@ -19,7 +19,10 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.tomiwaadelae.frndshq"
+      "package": "com.tomiwaadelae.frndshq",
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "output": "static",
@@ -46,11 +49,30 @@
         {
           "photosPermission": "FRNDSHQ uses your photos so you can set cover artwork for a release."
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker",
+      "expo-font",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": false
+        }
+      ],
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true,
       "tsconfigPaths": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "10f34908-6a08-4e29-bbc0-0c8a38d85654"
+      }
+    },
+    "owner": "tomiwa-adelae",
+    "runtimeVersion": {
+      "policy": "fingerprint"
     }
   }
 }
