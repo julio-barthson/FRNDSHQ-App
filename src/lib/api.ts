@@ -201,7 +201,18 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
 
   if (response.status === 204) return undefined as T;
 
-  const payload = await response.json().catch(() => null);
+  // Read as text first: `json()` swallows the body on a parse failure, and on
+  // a 2xx that left `payload` null for the caller to dereference — surfacing
+  // as a bare TypeError with nothing pointing back at the response.
+  const body = await response.text().catch(() => '');
+
+  let payload: unknown = null;
+  let unreadable = false;
+  try {
+    payload = body.length > 0 ? JSON.parse(body) : null;
+  } catch {
+    unreadable = true;
+  }
 
   if (!response.ok) {
     // TEMPORARY (2026-08-26) — the status is in the fallback so this branch is
@@ -213,6 +224,16 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
       `Something went wrong (HTTP ${response.status}). Please try again.`
     );
     throw new ApiError(response.status, message, details);
+  }
+
+  // Deliberately narrow: an empty 2xx body still returns null, as it always
+  // has, because `request<void>` callers rely on that. Only a body that is
+  // present and unparseable is an error.
+  if (unreadable) {
+    throw new ApiError(
+      response.status,
+      `The server replied ${response.status} but the app could not read the body (${body.length} bytes).`
+    );
   }
 
   return payload as T;

@@ -1,4 +1,5 @@
 import { Link } from 'expo-router';
+import * as Updates from 'expo-updates';
 import { StatusBar } from 'expo-status-bar';
 import { useRef, useState } from 'react';
 import { Text, TextInput, View } from 'react-native';
@@ -112,6 +113,14 @@ export default function SignInScreen() {
               messages={[formError, google.error]}
               onRetry={isNetworkError ? onSubmit : undefined}
             />
+
+            {/* TEMPORARY (2026-08-26) — proves which bundle is running, so a
+                stale error message can be told apart from an OTA that never
+                landed. Remove with the rest of the diagnostics. */}
+            <Text className="font-outfit text-caption text-muted">
+              build diag-2 · {Updates.isEmbeddedLaunch ? 'embedded' : 'ota'} ·{' '}
+              {Updates.updateId?.slice(0, 8) ?? 'none'}
+            </Text>
 
             <View className="gap-4">
               <AuthField
