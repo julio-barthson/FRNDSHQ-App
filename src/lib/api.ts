@@ -215,10 +215,9 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   }
 
   if (!response.ok) {
-    // TEMPORARY (2026-08-26) — the status is in the fallback so this branch is
-    // tellable apart from `mapAuthError`'s non-ApiError branch, which renders
-    // an identical sentence. A code here means the server refused; no code
-    // means the throw came from our own post-response code.
+    // The status goes in the fallback so an error the server refused can be
+    // told apart from one thrown after a response arrived — the two rendered
+    // an identical sentence, which cost a day of debugging once.
     const { message, details } = messageFrom(
       payload,
       `Something went wrong (HTTP ${response.status}). Please try again.`

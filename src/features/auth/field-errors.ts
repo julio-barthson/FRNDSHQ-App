@@ -42,23 +42,11 @@ export function mapAuthError<K extends string>(
   matchers: Matchers<K>
 ): MappedErrors<K> {
   if (!(error instanceof ApiError)) {
-    // TEMPORARY (2026-08-26) — diagnostic, revert once the cause is known.
-    //
-    // Reaching here means the request itself did not fail: `request()` throws
-    // only `ApiError`, so anything else was raised *after* a response came
-    // back, by our own code. A login the backend completes successfully (the
-    // session row is written in full) still lands here, and the generic copy
-    // below was destroying the only evidence of why.
-    //
-    // `name` matters as much as `message`: a `TypeError` points at an SDK 54
-    // API that only exists on 57, which has bitten this project four times and
-    // always typechecks clean.
-    const detail =
-      error instanceof Error
-        ? `${error.name}: ${error.message}`
-        : `Threw a non-Error: ${String(error)}`;
-
-    return { fields: {}, formError: detail };
+    // `request()` throws only `ApiError`, so reaching here means our own code
+    // threw after a response came back. Kept generic on purpose: the causes
+    // that used to land here are now reported by `request()` itself, with a
+    // status attached.
+    return { fields: {}, formError: 'Something went wrong. Please try again.' };
   }
 
   const fields: Partial<Record<K, string>> = {};
