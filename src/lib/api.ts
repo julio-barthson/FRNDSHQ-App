@@ -1,7 +1,13 @@
 import { API_BASE } from '@/lib/env';
 import { tokenStore } from '@/lib/token-store';
 
-const TIMEOUT_MS = 15_000;
+/**
+ * Render's free tier spins a service down after inactivity, and the cold start
+ * that follows measured ~31s. At the old 15s this surfaced as "can't reach
+ * FRNDSHQ" on the first request after an idle period even though the backend
+ * was healthy. Drop this back once the backend is on an always-on instance.
+ */
+const TIMEOUT_MS = 45_000;
 
 /**
  * `fetch` with a timeout that works on device.

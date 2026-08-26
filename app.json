@@ -73,6 +73,9 @@
     "owner": "tomiwa-adelae",
     "runtimeVersion": {
       "policy": "fingerprint"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/10f34908-6a08-4e29-bbc0-0c8a38d85654"
     }
   }
 }
