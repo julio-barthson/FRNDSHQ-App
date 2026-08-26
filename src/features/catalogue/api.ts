@@ -11,6 +11,7 @@ import type {
 function queryString(query: ReleaseQuery): string {
   const params = new URLSearchParams();
   if (query.status) params.set('status', query.status);
+  if (query.artistId) params.set('artistId', query.artistId);
   if (query.search?.trim()) params.set('search', query.search.trim());
   if (query.page) params.set('page', String(query.page));
   if (query.limit) params.set('limit', String(query.limit));

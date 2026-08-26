@@ -70,6 +70,9 @@ function metaLine(release: ReleaseSummary): string {
  * name on every row would be noise. It earns its place only when the release is
  * by more than them — which is exactly the case worth spotting at a glance.
  */
+// For a LABEL account `self` is null, so every row shows its artist — which is
+// what a label wants: the catalogue spans a roster and the name is the thing
+// that tells the rows apart.
 function collaboratorLine(release: ReleaseSummary, self: string | null): string | null {
   const artist = release.displayArtist;
   if (!artist || (self && artist === self)) return null;

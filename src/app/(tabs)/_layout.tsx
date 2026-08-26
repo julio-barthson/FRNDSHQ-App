@@ -2,6 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Tabs } from 'expo-router';
 import { StyleSheet } from 'react-native';
 
+import { useSession } from '@/features/auth/session';
 import { useThemeColors } from '@/features/theme/theme';
 import { FontFamily } from '@/constants/theme';
 
@@ -21,11 +22,18 @@ import { FontFamily } from '@/constants/theme';
  *
  * Labels are always visible. Three tabs leave room for them, and "Releases" as
  * a bare glyph reads as library, albums or archive depending on the person.
+ *
+ * A LABEL account gets a fourth: Roster. It is hidden with `href: null` rather
+ * than omitted, because expo-router registers every file in this folder as a
+ * tab whether it is listed here or not — dropping the `Tabs.Screen` would show
+ * it to everyone, which is the opposite of the intent.
  */
 export default function TabsLayout() {
   // Read through the hook, not the `Brand` constant: none of this is reachable
   // by `className`, so the tab bar would stay black on a light device.
   const colors = useThemeColors();
+  const { user } = useSession();
+  const isLabel = user?.label != null;
 
   return (
     <Tabs
@@ -66,6 +74,17 @@ export default function TabsLayout() {
           title: 'Releases',
           tabBarIcon: ({ color, size, focused }) => (
             <Ionicons name={focused ? 'albums' : 'albums-outline'} size={size} color={color} />
+          ),
+        }}
+      />
+
+      <Tabs.Screen
+        name="roster"
+        options={{
+          title: 'Roster',
+          href: isLabel ? undefined : null,
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons name={focused ? 'people' : 'people-outline'} size={size} color={color} />
           ),
         }}
       />

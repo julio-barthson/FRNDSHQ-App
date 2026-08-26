@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,6 +15,8 @@ import { Brand } from '@/constants/brand';
 import { GENRES } from '@/constants/genres';
 import { useSession } from '@/features/auth/session';
 import { createRelease } from '@/features/catalogue/api';
+import { listRoster } from '@/features/label/api';
+import type { RosterArtistSummary } from '@/features/label/types';
 import { previewArtist, previewFeatured, typedFeatureWarning } from '@/features/catalogue/billing';
 import type { ContributorInput } from '@/features/catalogue/types';
 import { ApiError } from '@/lib/api';
@@ -56,8 +58,42 @@ export default function NewReleaseScreen() {
     user?.artist?.stageName ? [{ name: user.artist.stageName, role: 'PRIMARY_ARTIST' }] : []
   );
 
+  // A label releases under one of its roster artists, never under itself, so
+  // this is the first thing it has to answer. A solo artist never sees it —
+  // they can only release as themselves and the API infers it.
+  const isLabel = user?.label != null;
+  const [roster, setRoster] = useState<RosterArtistSummary[]>([]);
+  const [rosterArtistId, setRosterArtistId] = useState<string | null>(null);
+  const [rosterOpen, setRosterOpen] = useState(false);
+
+  useEffect(() => {
+    if (!isLabel) return;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const loaded = await listRoster();
+        if (cancelled) return;
+        setRoster(loaded);
+        // Pre-selected when there is no choice to make, which also matches
+        // what the API would have defaulted to on its own.
+        if (loaded.length === 1) setRosterArtistId(loaded[0].id);
+      } catch {
+        // Left empty: the picker then shows the "no artists yet" hint, which
+        // is a better answer than an error banner over an unrelated form.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isLabel]);
+
+  const selectedRosterArtist = roster.find((artist) => artist.id === rosterArtistId) ?? null;
+
   const filledTracks = trackTitles.map((track) => track.trim()).filter(Boolean);
-  const canCreate = Boolean(title.trim()) && filledTracks.length > 0;
+  const canCreate =
+    Boolean(title.trim()) && filledTracks.length > 0 && (!isLabel || rosterArtistId !== null);
 
   function setTrackAt(index: number, value: string) {
     setTrackTitles((current) => current.map((track, i) => (i === index ? value : track)));
@@ -91,6 +127,7 @@ export default function NewReleaseScreen() {
     setPending(true);
     try {
       const created = await createRelease({
+        ...(rosterArtistId ? { artistId: rosterArtistId } : {}),
         title: trimmed,
         // `type` is left out on purpose: the API derives it from the track
         // count, so sending one risks disagreeing with what the artist sees.
@@ -151,6 +188,22 @@ export default function NewReleaseScreen() {
               autoFocus
               editable={!pending}
             />
+
+            {isLabel ? (
+              <SelectField
+                label="Release by"
+                value={selectedRosterArtist?.stageName ?? null}
+                placeholder={roster.length ? 'Choose a roster artist' : 'No artists on your roster'}
+                hint={
+                  roster.length
+                    ? 'The artist this release is credited to on stores.'
+                    : 'Add an artist on the Roster tab first.'
+                }
+                required
+                disabled={pending || roster.length === 0}
+                onPress={() => setRosterOpen(true)}
+              />
+            ) : null}
 
             {/* Pre-filled with the artist's own name, which is what the API
                 would have assumed anyway. It is here to be *seen*: a feature
@@ -274,6 +327,23 @@ export default function NewReleaseScreen() {
           setContributors(rows);
           setArtistsOpen(false);
         }}
+      />
+
+      <PickerSheet
+        visible={rosterOpen}
+        title="Release by"
+        options={roster.map((artist) => ({
+          value: artist.id,
+          label: artist.stageName,
+          hint:
+            artist.releaseCount === 1 ? '1 release' : `${artist.releaseCount} releases`,
+        }))}
+        selected={rosterArtistId}
+        onSelect={(value) => {
+          setRosterArtistId(value);
+          setRosterOpen(false);
+        }}
+        onClose={() => setRosterOpen(false)}
       />
 
       <PickerSheet

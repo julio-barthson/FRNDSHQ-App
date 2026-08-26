@@ -49,6 +49,8 @@ export interface ReleasePage {
 
 export interface ReleaseQuery {
   status?: ReleaseStatus;
+  /** Narrows a label's catalogue to one roster artist. */
+  artistId?: string;
   /** Matches release or track titles. */
   search?: string;
   page?: number;
@@ -65,6 +67,12 @@ export interface TrackInput {
 }
 
 export interface CreateReleaseInput {
+  /**
+   * Which roster artist this release belongs to. Ignored for a solo artist,
+   * who can only release as themselves; a label must send it unless its roster
+   * holds exactly one artist.
+   */
+  artistId?: string;
   title: string;
   /** Omitted deliberately: the API derives it from the track count. */
   type?: ReleaseType;

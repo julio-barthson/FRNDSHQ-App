@@ -22,13 +22,14 @@ const E164_PATTERN = /^\+[1-9]\d{6,14}$/;
 const BIO_MAX = 500;
 
 /**
- * Label accounts exist as far as the profile row and no further. A LABEL
- * account has no `artist` row, and `catalogue.access.ts#artistFor()` throws a
- * 403 for every account without one — so Home, Releases and create all fail
- * for a label, and the answer given here can never be changed. Roster
- * management is Phase 2; turn this back on once a label has somewhere to go.
+ * Turned back on 2026-08-26, once a label had somewhere to go.
+ *
+ * `catalogue.access.ts` resolves an account to a *set* of artist rows now —
+ * one for a solo artist, the whole roster for a label — so the 403 that made
+ * this a dead end is gone. A label signs artists on the Roster tab and picks
+ * one when creating a release. The choice made here is still permanent.
  */
-const LABEL_ACCOUNTS_ENABLED = false;
+const LABEL_ACCOUNTS_ENABLED = true;
 
 type FieldName = 'accountType' | 'name' | 'phoneNumber' | 'country' | 'bio';
 
