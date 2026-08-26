@@ -204,7 +204,14 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   const payload = await response.json().catch(() => null);
 
   if (!response.ok) {
-    const { message, details } = messageFrom(payload, 'Something went wrong. Please try again.');
+    // TEMPORARY (2026-08-26) — the status is in the fallback so this branch is
+    // tellable apart from `mapAuthError`'s non-ApiError branch, which renders
+    // an identical sentence. A code here means the server refused; no code
+    // means the throw came from our own post-response code.
+    const { message, details } = messageFrom(
+      payload,
+      `Something went wrong (HTTP ${response.status}). Please try again.`
+    );
     throw new ApiError(response.status, message, details);
   }
 
