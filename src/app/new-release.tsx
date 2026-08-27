@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -63,7 +63,12 @@ export default function NewReleaseScreen() {
   // they can only release as themselves and the API infers it.
   const isLabel = user?.label != null;
   const [roster, setRoster] = useState<RosterArtistSummary[]>([]);
-  const [rosterArtistId, setRosterArtistId] = useState<string | null>(null);
+  // Seeded from the route when arriving from an artist's page, where the
+  // question "who is this by" has already been answered.
+  const { artistId: artistIdParam } = useLocalSearchParams<{ artistId?: string }>();
+  const [rosterArtistId, setRosterArtistId] = useState<string | null>(
+    () => artistIdParam ?? null
+  );
   const [rosterOpen, setRosterOpen] = useState(false);
 
   useEffect(() => {
@@ -76,8 +81,9 @@ export default function NewReleaseScreen() {
         if (cancelled) return;
         setRoster(loaded);
         // Pre-selected when there is no choice to make, which also matches
-        // what the API would have defaulted to on its own.
-        if (loaded.length === 1) setRosterArtistId(loaded[0].id);
+        // what the API would have defaulted to on its own. Never overrides an
+        // artist named in the route.
+        if (loaded.length === 1) setRosterArtistId((current) => current ?? loaded[0].id);
       } catch {
         // Left empty: the picker then shows the "no artists yet" hint, which
         // is a better answer than an error banner over an unrelated form.

@@ -62,7 +62,10 @@ function RootNavigator() {
             missing from this group is unreachable, and the router answers a
             push to it by trying to go back from a stack with no history. */}
         <Stack.Screen name="roster/new" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="roster/[id]" options={{ presentation: 'modal' }} />
+        {/* The artist is a destination — you arrive to read it. Editing them is
+            a modal over it, like every other form here. */}
+        <Stack.Screen name="roster/[id]/index" />
+        <Stack.Screen name="roster/[id]/edit" options={{ presentation: 'modal' }} />
         {/* A destination rather than a modal: it is a list you scroll and page
             through, and tapping a row pushes onto the release from here. */}
         <Stack.Screen name="notifications" />
