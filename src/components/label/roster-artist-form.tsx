@@ -3,6 +3,7 @@ import { Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { AuthAlert } from '@/components/auth/auth-alert';
+import { AvatarPicker } from '@/components/label/avatar-picker';
 import { FormField } from '@/components/ui/form-field';
 import { type Matchers } from '@/features/auth/field-errors';
 import { useAuthErrors } from '@/features/auth/use-auth-errors';
@@ -71,6 +72,9 @@ export function useRosterArtistForm(
   const [bio, setBio] = useState(existing?.bio ?? '');
   const [country, setCountry] = useState(existing?.country ?? '');
   const [spotify, setSpotify] = useState(existing?.spotifyArtistId ?? '');
+  // Held until save rather than attached on pick: the add form has no artist
+  // to attach it to yet, so both forms work the same way.
+  const [avatarAssetId, setAvatarAssetId] = useState<string | null>(null);
   const [apple, setApple] = useState(existing?.appleMusicArtistId ?? '');
 
   const { fields: errors, formError, setFields, clearField, capture } =
@@ -82,7 +86,8 @@ export function useRosterArtistForm(
     bio !== (existing?.bio ?? '') ||
     country !== (existing?.country ?? '') ||
     spotify !== (existing?.spotifyArtistId ?? '') ||
-    apple !== (existing?.appleMusicArtistId ?? '');
+    apple !== (existing?.appleMusicArtistId ?? '') ||
+    avatarAssetId !== null;
 
   function validate(): RosterArtistInput | null {
     const next: Partial<Record<RosterFieldName, string>> = {};
@@ -109,12 +114,20 @@ export function useRosterArtistForm(
       ...(country.trim() ? { country: country.trim().toUpperCase() } : {}),
       spotifyArtistId: spotify.trim(),
       appleMusicArtistId: apple.trim(),
+      ...(avatarAssetId ? { avatarAssetId } : {}),
     };
   }
 
   const form = (
     <>
       <AuthAlert messages={[formError]} />
+
+      <AvatarPicker
+        avatarUrl={existing?.avatarUrl ?? null}
+        seedChar={(stageName || existing?.stageName || '?').charAt(0)}
+        disabled={disabled}
+        onPicked={setAvatarAssetId}
+      />
 
       <Group index={0} title="ARTIST">
         <FormField

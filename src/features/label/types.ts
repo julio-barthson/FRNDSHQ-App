@@ -32,6 +32,8 @@ export interface RosterArtistInput {
   bio?: string;
   country?: string;
   avatarUrl?: string;
+  /** A confirmed AVATAR upload. Responses come back with a signed `avatarUrl`. */
+  avatarAssetId?: string;
   /** A profile URL is fine here; the API reduces it to the id. */
   spotifyArtistId?: string;
   appleMusicArtistId?: string;

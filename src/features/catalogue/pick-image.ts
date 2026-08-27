@@ -40,11 +40,33 @@ async function measure(uri: string): Promise<{ sizeBytes: number; mimeType?: str
  * honest, since the API does not check dimensions itself.
  */
 export async function pickArtwork(): Promise<LocalFile | null> {
+  return pickSquareImage(
+    'FRNDSHQ needs access to your photos to set cover artwork. You can grant it in Settings.',
+    'artwork'
+  );
+}
+
+/**
+ * The same square crop, for a roster artist's picture.
+ *
+ * Separate only for its copy: a label being told FRNDSHQ wants photo access
+ * "to set cover artwork" while adding an artist is the kind of small lie that
+ * makes a permission prompt feel untrustworthy.
+ */
+export async function pickAvatar(): Promise<LocalFile | null> {
+  return pickSquareImage(
+    "FRNDSHQ needs access to your photos to set an artist's picture. You can grant it in Settings.",
+    'avatar'
+  );
+}
+
+async function pickSquareImage(
+  permissionMessage: string,
+  fallbackName: string
+): Promise<LocalFile | null> {
   const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!permission.granted) {
-    throw new PickerError(
-      'FRNDSHQ needs access to your photos to set cover artwork. You can grant it in Settings.'
-    );
+    throw new PickerError(permissionMessage);
   }
 
   const result = await ImagePicker.launchImageLibraryAsync({
@@ -66,7 +88,7 @@ export async function pickArtwork(): Promise<LocalFile | null> {
 
   return {
     uri: asset.uri,
-    name: asset.fileName ?? `artwork.${extension}`,
+    name: asset.fileName ?? `${fallbackName}.${extension}`,
     mimeType,
     sizeBytes: asset.fileSize ?? measured.sizeBytes,
   };
