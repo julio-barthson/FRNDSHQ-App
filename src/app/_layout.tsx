@@ -78,11 +78,17 @@ function RootNavigator() {
         <Stack.Screen name="(onboarding)" />
       </Stack.Protected>
 
-      {/* Outside every guard on purpose: it has to be reachable from
-          onboarding, where an invited person is asked artist-or-label and is
-          neither, AND from Profile once they are signed in. A screen can only
-          belong to one Protected group, and this one spans two states. */}
-      <Stack.Screen name="accept-invite" options={{ presentation: 'modal' }} />
+      {/* Spans two states — reachable from onboarding, where an invited person
+          is asked artist-or-label and is neither, AND from Profile once they
+          are signed in. A compound guard rather than a bare Screen: anything
+          left outside these groups is in the navigator even while `status` is
+          `loading`, when every other route is excluded. It then becomes the
+          only route there is, gets picked as the initial one, and has to be
+          navigated away from a moment later — which is the "GO_BACK was not
+          handled" warning, on every launch. */}
+      <Stack.Protected guard={status === 'onboarding' || status === 'signedIn'}>
+        <Stack.Screen name="accept-invite" options={{ presentation: 'modal' }} />
+      </Stack.Protected>
 
       <Stack.Protected guard={status === 'unverified'}>
         <Stack.Screen name="(verify)" />
