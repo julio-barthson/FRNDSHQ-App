@@ -3,6 +3,11 @@ import type { ReleaseStatus, ReleaseSummary } from '@/features/catalogue/types';
 export interface AttentionItem {
   releaseId: string;
   releaseTitle: string;
+  /**
+   * Who the release is by. A solo artist already knows, so their dashboard
+   * ignores it; for a label it is the column that makes the row mean anything.
+   */
+  artistName: string;
   /** Short enough to sit on one line in a card. */
   message: string;
   /** Drives ordering and colour; `blocking` is the artist's turn to act. */
@@ -61,6 +66,7 @@ export function attentionItems(releases: ReleaseSummary[]): AttentionItem[] {
       items.push({
         releaseId: release.id,
         releaseTitle: release.title,
+        artistName: release.displayArtist,
         message: 'Came back with notes',
         tone: 'urgent',
       });
@@ -75,6 +81,7 @@ export function attentionItems(releases: ReleaseSummary[]): AttentionItem[] {
       items.push({
         releaseId: release.id,
         releaseTitle: release.title,
+        artistName: release.displayArtist,
         message: `${failed} track${failed === 1 ? '' : 's'} failed audio checks`,
         tone: 'urgent',
       });
@@ -86,6 +93,7 @@ export function attentionItems(releases: ReleaseSummary[]): AttentionItem[] {
       items.push({
         releaseId: release.id,
         releaseTitle: release.title,
+        artistName: release.displayArtist,
         message: `${missingAudio} track${missingAudio === 1 ? '' : 's'} need audio`,
         tone: 'blocking',
       });
@@ -96,6 +104,7 @@ export function attentionItems(releases: ReleaseSummary[]): AttentionItem[] {
       items.push({
         releaseId: release.id,
         releaseTitle: release.title,
+        artistName: release.displayArtist,
         message: 'Needs cover artwork',
         tone: 'blocking',
       });

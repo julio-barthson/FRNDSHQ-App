@@ -12,6 +12,9 @@ import { useUnreadCount } from '@/features/notifications/use-unread-count';
 import { Brand } from '@/constants/brand';
 import { useSession } from '@/features/auth/session';
 import { listReleases } from '@/features/catalogue/api';
+import { LabelDashboard } from '@/components/label/label-dashboard';
+import { getLabelOverview } from '@/features/label/api';
+import type { LabelOverview } from '@/features/label/types';
 import { attentionItems, inProgress, summarise } from '@/features/catalogue/dashboard';
 import type { ReleaseSummary } from '@/features/catalogue/types';
 import { ApiError } from '@/lib/api';
@@ -60,21 +63,31 @@ export default function HomeScreen() {
   const router = useRouter();
   const { user } = useSession();
 
+  // A label and an artist ask different questions of this screen, so they are
+  // fed by different endpoints: `/label/overview` aggregates across a roster,
+  // where a page of `/releases` would only ever describe itself.
+  const isLabel = user?.label != null;
+
   const [releases, setReleases] = useState<ReleaseSummary[] | null>(null);
+  const [overview, setOverview] = useState<LabelOverview | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      const page = await listReleases({ limit: DASHBOARD_LIMIT });
-      setReleases(page.items);
+      if (isLabel) {
+        setOverview(await getLabelOverview());
+      } else {
+        const page = await listReleases({ limit: DASHBOARD_LIMIT });
+        setReleases(page.items);
+      }
       setError(null);
     } catch (caught) {
       setError(
-        caught instanceof ApiError ? caught.message : 'Could not load your releases just now.'
+        caught instanceof ApiError ? caught.message : 'Could not load your catalogue just now.'
       );
     }
-  }, []);
+  }, [isLabel]);
 
   useFocusEffect(
     useCallback(() => {
@@ -173,102 +186,108 @@ export default function HomeScreen() {
             progressBackgroundColor={Brand.inkRaised}
           />
         }>
-        <AuthAlert messages={[error]} onRetry={() => void load()} />
-
-        {releases === null && error === null ? (
-          <View className="bg-ink-raised rounded-card h-[260px] items-center justify-center">
-            <ActivityIndicator color={Brand.blueOnInk} />
-          </View>
+        {isLabel ? (
+          <LabelDashboard overview={overview} error={error} onRetry={() => void load()} />
         ) : (
-          <ReleaseHero
-            release={latest}
-            onPress={() => (latest ? openRelease(latest.id) : router.push('/new-release'))}
-          />
-        )}
+          <>
+          <AuthAlert messages={[error]} onRetry={() => void load()} />
 
-        {summary && summary.total > 0 ? (
-          <View className="mt-4 flex-row gap-2">
-            <ActionTile
-              icon="add-circle"
-              label="New release"
-              tint={Brand.blueOnInk}
-              onPress={() => router.push('/new-release')}
-            />
-            <ActionTile
-              icon="albums"
-              label={`${summary.total} ${summary.total === 1 ? 'release' : 'releases'}`}
-              tint={Brand.blueOnInk}
-              onPress={() => router.push('/releases')}
-            />
-          </View>
-        ) : null}
-
-        {attention.length > 0 ? (
-          <View className="mt-4 gap-2">
-            <SectionHeading>NEEDS YOUR ATTENTION</SectionHeading>
-            {attention.map((item) => (
-              <Pressable
-                key={`${item.releaseId}-${item.message}`}
-                onPress={() => openRelease(item.releaseId)}
-                accessibilityRole="button"
-                className="bg-ink-raised active:bg-ink-high rounded-card flex-row items-center gap-4 p-4">
-                <View className="flex-1 gap-1">
-                  <Text className="font-outfit-semibold text-heading text-fg" numberOfLines={1}>
-                    {item.releaseTitle}
-                  </Text>
-                  <Text
-                    className={`font-outfit text-callout ${
-                      item.tone === 'urgent' ? 'text-danger' : 'text-muted'
-                    }`}
-                    numberOfLines={1}>
-                    {item.message}
-                  </Text>
-                </View>
-                <Ionicons name="chevron-forward" size={18} color={Brand.muted} />
-              </Pressable>
-            ))}
-          </View>
-        ) : null}
-
-        {drafts.length > 0 ? (
-          <View className="mt-4 gap-2">
-            <View className="flex-row items-center justify-between">
-              <SectionHeading>IN PROGRESS</SectionHeading>
-              <Pressable
-                onPress={() => router.push('/releases')}
-                accessibilityRole="button"
-                hitSlop={12}>
-                <Text className="font-outfit-semibold text-label text-blue-ink">See all</Text>
-              </Pressable>
+          {releases === null && error === null ? (
+            <View className="bg-ink-raised rounded-card h-[260px] items-center justify-center">
+              <ActivityIndicator color={Brand.blueOnInk} />
             </View>
+          ) : (
+            <ReleaseHero
+              release={latest}
+              onPress={() => (latest ? openRelease(latest.id) : router.push('/new-release'))}
+            />
+          )}
 
-            {drafts.map((release) => (
-              <Pressable
-                key={release.id}
-                onPress={() => openRelease(release.id)}
-                accessibilityRole="button"
-                className="bg-ink-raised active:bg-ink-high rounded-card flex-row items-center gap-4 p-3">
-                <Artwork
-                  url={release.artworkUrl}
-                  seedChar={release.title.charAt(0)}
-                  className="h-[72px] w-[72px]"
-                />
+          {summary && summary.total > 0 ? (
+            <View className="mt-4 flex-row gap-2">
+              <ActionTile
+                icon="add-circle"
+                label="New release"
+                tint={Brand.blueOnInk}
+                onPress={() => router.push('/new-release')}
+              />
+              <ActionTile
+                icon="albums"
+                label={`${summary.total} ${summary.total === 1 ? 'release' : 'releases'}`}
+                tint={Brand.blueOnInk}
+                onPress={() => router.push('/releases')}
+              />
+            </View>
+          ) : null}
 
-                <View className="flex-1 gap-1">
-                  <Text className="font-outfit-semibold text-body text-fg" numberOfLines={1}>
-                    {release.title}
-                  </Text>
-                  <Text className="font-outfit text-label text-muted">
-                    {release.status === 'REJECTED' ? 'Needs changes' : 'Draft'} ·{' '}
-                    {release.trackCount} {release.trackCount === 1 ? 'track' : 'tracks'}
-                  </Text>
-                </View>
+          {attention.length > 0 ? (
+            <View className="mt-4 gap-2">
+              <SectionHeading>NEEDS YOUR ATTENTION</SectionHeading>
+              {attention.map((item) => (
+                <Pressable
+                  key={`${item.releaseId}-${item.message}`}
+                  onPress={() => openRelease(item.releaseId)}
+                  accessibilityRole="button"
+                  className="bg-ink-raised active:bg-ink-high rounded-card flex-row items-center gap-4 p-4">
+                  <View className="flex-1 gap-1">
+                    <Text className="font-outfit-semibold text-heading text-fg" numberOfLines={1}>
+                      {item.releaseTitle}
+                    </Text>
+                    <Text
+                      className={`font-outfit text-callout ${
+                        item.tone === 'urgent' ? 'text-danger' : 'text-muted'
+                      }`}
+                      numberOfLines={1}>
+                      {item.message}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color={Brand.muted} />
+                </Pressable>
+              ))}
+            </View>
+          ) : null}
 
-                <Ionicons name="chevron-forward" size={18} color={Brand.muted} />
-              </Pressable>
-            ))}
-          </View>
-        ) : null}
+          {drafts.length > 0 ? (
+            <View className="mt-4 gap-2">
+              <View className="flex-row items-center justify-between">
+                <SectionHeading>IN PROGRESS</SectionHeading>
+                <Pressable
+                  onPress={() => router.push('/releases')}
+                  accessibilityRole="button"
+                  hitSlop={12}>
+                  <Text className="font-outfit-semibold text-label text-blue-ink">See all</Text>
+                </Pressable>
+              </View>
+
+              {drafts.map((release) => (
+                <Pressable
+                  key={release.id}
+                  onPress={() => openRelease(release.id)}
+                  accessibilityRole="button"
+                  className="bg-ink-raised active:bg-ink-high rounded-card flex-row items-center gap-4 p-3">
+                  <Artwork
+                    url={release.artworkUrl}
+                    seedChar={release.title.charAt(0)}
+                    className="h-[72px] w-[72px]"
+                  />
+
+                  <View className="flex-1 gap-1">
+                    <Text className="font-outfit-semibold text-body text-fg" numberOfLines={1}>
+                      {release.title}
+                    </Text>
+                    <Text className="font-outfit text-label text-muted">
+                      {release.status === 'REJECTED' ? 'Needs changes' : 'Draft'} ·{' '}
+                      {release.trackCount} {release.trackCount === 1 ? 'track' : 'tracks'}
+                    </Text>
+                  </View>
+
+                  <Ionicons name="chevron-forward" size={18} color={Brand.muted} />
+                </Pressable>
+              ))}
+            </View>
+          ) : null}
+          </>
+        )}
       </ScrollView>
     </View>
   );

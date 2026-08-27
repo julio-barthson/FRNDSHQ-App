@@ -1,4 +1,5 @@
 import type {
+  LabelOverview,
   RosterArtist,
   RosterArtistInput,
   RosterArtistSummary,
@@ -48,4 +49,12 @@ export function removeRosterArtist(id: string) {
   return request<{ id: string; removed: boolean }>(`/label/artists/${id}`, {
     method: 'DELETE',
   });
+}
+
+/**
+ * `GET /label/overview`. The whole dashboard in one request: real pipeline
+ * totals, the roster, and the releases still waiting on someone.
+ */
+export function getLabelOverview() {
+  return request<LabelOverview>('/label/overview');
 }

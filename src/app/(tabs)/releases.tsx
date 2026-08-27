@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -231,7 +231,14 @@ export default function ReleasesScreen() {
 
   const [search, setSearch] = useState('');
   const [debounced, setDebounced] = useState('');
-  const [status, setStatus] = useState<ReleaseStatus | null>(null);
+  // Seeded from the route so the label dashboard's pipeline tiles can open
+  // this screen already filtered. Read once as the initial value rather than
+  // synced: the chips below are the source of truth from then on, and a param
+  // that kept re-asserting itself would fight every tap.
+  const { status: statusParam } = useLocalSearchParams<{ status?: string }>();
+  const [status, setStatus] = useState<ReleaseStatus | null>(
+    () => (statusParam as ReleaseStatus | undefined) ?? null
+  );
 
   const pageRef = useRef(1);
   const totalPagesRef = useRef(1);
