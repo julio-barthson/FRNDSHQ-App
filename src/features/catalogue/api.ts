@@ -130,3 +130,14 @@ export function submitRelease(id: string) {
 export function deleteRelease(id: string) {
   return request<{ message: string }>(`/releases/${id}`, { method: 'DELETE' });
 }
+
+/**
+ * `GET /me/artists` — whoever this account may create a release under.
+ *
+ * One question instead of three: their own artist, a label's whole roster, or
+ * the artists a MANAGER seat covers. Asking `user.label` instead was what left
+ * a seat holder unable to create anything.
+ */
+export function listWritableArtists() {
+  return request<{ id: string; stageName: string }[]>('/me/artists');
+}

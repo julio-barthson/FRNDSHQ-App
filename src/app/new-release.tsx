@@ -14,9 +14,7 @@ import { ScreenHeader } from '@/components/ui/screen-header';
 import { Brand } from '@/constants/brand';
 import { GENRES } from '@/constants/genres';
 import { useSession } from '@/features/auth/session';
-import { createRelease } from '@/features/catalogue/api';
-import { listRoster } from '@/features/label/api';
-import type { RosterArtistSummary } from '@/features/label/types';
+import { createRelease, listWritableArtists } from '@/features/catalogue/api';
 import { previewArtist, previewFeatured, typedFeatureWarning } from '@/features/catalogue/billing';
 import type { ContributorInput } from '@/features/catalogue/types';
 import { ApiError } from '@/lib/api';
@@ -58,11 +56,10 @@ export default function NewReleaseScreen() {
     user?.artist?.stageName ? [{ name: user.artist.stageName, role: 'PRIMARY_ARTIST' }] : []
   );
 
-  // A label releases under one of its roster artists, never under itself, so
-  // this is the first thing it has to answer. A solo artist never sees it —
-  // they can only release as themselves and the API infers it.
-  const isLabel = user?.label != null;
-  const [roster, setRoster] = useState<RosterArtistSummary[]>([]);
+  // Whoever this account can release under: itself, a whole roster, or the
+  // artists a MANAGER seat covers. Keyed on the answer rather than on the
+  // account type, so a seat holder is not left with a form they cannot submit.
+  const [roster, setRoster] = useState<{ id: string; stageName: string }[]>([]);
   // Seeded from the route when arriving from an artist's page, where the
   // question "who is this by" has already been answered.
   const { artistId: artistIdParam } = useLocalSearchParams<{ artistId?: string }>();
@@ -72,12 +69,11 @@ export default function NewReleaseScreen() {
   const [rosterOpen, setRosterOpen] = useState(false);
 
   useEffect(() => {
-    if (!isLabel) return;
     let cancelled = false;
 
     (async () => {
       try {
-        const loaded = await listRoster();
+        const loaded = await listWritableArtists();
         if (cancelled) return;
         setRoster(loaded);
         // Pre-selected when there is no choice to make, which also matches
@@ -93,13 +89,16 @@ export default function NewReleaseScreen() {
     return () => {
       cancelled = true;
     };
-  }, [isLabel]);
+  }, []);
 
   const selectedRosterArtist = roster.find((artist) => artist.id === rosterArtistId) ?? null;
 
   const filledTracks = trackTitles.map((track) => track.trim()).filter(Boolean);
+  // A choice only exists above one; with exactly one the answer is already
+  // filled in, and with none the API is the right place to say so.
+  const mustChooseArtist = roster.length > 1;
   const canCreate =
-    Boolean(title.trim()) && filledTracks.length > 0 && (!isLabel || rosterArtistId !== null);
+    Boolean(title.trim()) && filledTracks.length > 0 && (!mustChooseArtist || rosterArtistId !== null);
 
   function setTrackAt(index: number, value: string) {
     setTrackTitles((current) => current.map((track, i) => (i === index ? value : track)));
@@ -195,7 +194,7 @@ export default function NewReleaseScreen() {
               editable={!pending}
             />
 
-            {isLabel ? (
+            {mustChooseArtist ? (
               <SelectField
                 label="Release by"
                 value={selectedRosterArtist?.stageName ?? null}
@@ -338,11 +337,12 @@ export default function NewReleaseScreen() {
       <PickerSheet
         visible={rosterOpen}
         title="Release by"
+        // No release count here any more: this list is now everyone the caller
+        // can release for, which includes seats on artists whose catalogue
+        // totals are none of the caller's business.
         options={roster.map((artist) => ({
           value: artist.id,
           label: artist.stageName,
-          hint:
-            artist.releaseCount === 1 ? '1 release' : `${artist.releaseCount} releases`,
         }))}
         selected={rosterArtistId}
         onSelect={(value) => {
