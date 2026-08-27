@@ -26,6 +26,8 @@ import { STATUS_EXPLAINER, StatusBadge } from '@/components/catalogue/status-bad
 import { EmptyCatalogue, EmptySearch } from '@/components/ui/illustrations';
 import { Brand } from '@/constants/brand';
 import { useSession } from '@/features/auth/session';
+import { listRoster } from '@/features/label/api';
+import type { RosterArtistSummary } from '@/features/label/types';
 import { listReleases } from '@/features/catalogue/api';
 import { totalRuntime } from '@/features/catalogue/detail';
 import type { ReleaseStatus, ReleaseSummary } from '@/features/catalogue/types';
@@ -229,6 +231,13 @@ export default function ReleasesScreen() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [mode, setMode] = useState<ViewMode>('grid');
 
+  // A label's catalogue spans a roster, so it needs a second axis of filter
+  // that means nothing to a solo artist — whose scope is one artist already.
+  const isLabel = user?.label != null;
+  const [roster, setRoster] = useState<RosterArtistSummary[]>([]);
+  const { artistId: artistIdParam } = useLocalSearchParams<{ artistId?: string }>();
+  const [artistId, setArtistId] = useState<string | null>(() => artistIdParam ?? null);
+
   const [search, setSearch] = useState('');
   const [debounced, setDebounced] = useState('');
   // Seeded from the route so the label dashboard's pipeline tiles can open
@@ -257,6 +266,7 @@ export default function ReleasesScreen() {
           limit: PAGE_SIZE,
           ...(debounced.trim() ? { search: debounced.trim() } : {}),
           ...(status ? { status } : {}),
+          ...(artistId ? { artistId } : {}),
         });
 
         pageRef.current = result.page;
@@ -272,7 +282,7 @@ export default function ReleasesScreen() {
         );
       }
     },
-    [debounced, status]
+    [artistId, debounced, status]
   );
 
   useFocusEffect(
@@ -296,13 +306,36 @@ export default function ReleasesScreen() {
     setLoadingMore(false);
   }, [fetchPage, loadingMore, refreshing]);
 
-  const filtered = Boolean(debounced.trim() || status);
+  // Drives the empty state and the count wording, so the artist chip has to
+  // count as a filter too — an empty roster-artist view is a filtered result,
+  // not an empty catalogue.
+  const filtered = Boolean(debounced.trim() || status || artistId);
+  useEffect(() => {
+    if (!isLabel) return;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const loaded = await listRoster();
+        if (!cancelled) setRoster(loaded);
+      } catch {
+        // Left empty: the artist chips simply do not appear. An error banner
+        // over a catalogue that loaded fine would be the wrong emphasis.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isLabel]);
+
   const loading = releases === null && error === null;
 
   function clearFilters() {
     setSearch('');
     setDebounced('');
     setStatus(null);
+    setArtistId(null);
   }
 
   function openRelease(id: string) {
@@ -414,6 +447,40 @@ export default function ReleasesScreen() {
             );
           })}
         </ScrollView>
+
+        {/* A second row rather than mixed into the first: status and artist are
+            different questions, and interleaving them makes both harder to
+            read. Hidden entirely for a solo artist, for whom it is one chip
+            that can only ever say "me". */}
+        {isLabel && roster.length > 1 ? (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerClassName="gap-2 pr-4">
+            {[{ id: null, stageName: 'All artists' }, ...roster].map((entry) => {
+              const selected = artistId === entry.id;
+              return (
+                <Pressable
+                  key={entry.id ?? 'all'}
+                  onPress={() => setArtistId(entry.id)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected }}
+                  className={`rounded-full border px-4 py-2 ${
+                    selected
+                      ? 'border-blue-line bg-blue-surface'
+                      : 'border-line bg-ink-raised active:bg-ink-high'
+                  }`}>
+                  <Text
+                    className={`font-outfit-medium text-label ${
+                      selected ? 'text-blue-ink' : 'text-muted'
+                    }`}>
+                    {entry.stageName}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        ) : null}
       </View>
 
       {error ? (

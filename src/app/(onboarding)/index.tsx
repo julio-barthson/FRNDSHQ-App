@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
@@ -94,6 +95,7 @@ function TypeCard({
 }
 
 export default function OnboardingScreen() {
+  const router = useRouter();
   const { user, saveProfile, setAccountType, signOut } = useSession();
 
   const [step, setStep] = useState<Step>('type');
@@ -269,6 +271,23 @@ export default function OnboardingScreen() {
                       />
                     </View>
                   ) : null}
+
+                  {/* The third answer. Someone a label invited is neither an
+                      artist account nor a label one, and guessing here creates
+                      a profile row they did not want and cannot undo. */}
+                  <View className="flex-row flex-wrap items-center justify-center">
+                    <Text className="font-outfit text-muted text-[15px]">
+                      Invited by a label?{' '}
+                    </Text>
+                    <Pressable
+                      onPress={() => router.push('/accept-invite')}
+                      accessibilityRole="button"
+                      hitSlop={8}>
+                      <Text className="font-outfit-semibold text-blue-ink text-[15px]">
+                        Enter your code
+                      </Text>
+                    </Pressable>
+                  </View>
 
                   <FormField
                     label={isLabel ? 'Label name' : 'Artist name'}

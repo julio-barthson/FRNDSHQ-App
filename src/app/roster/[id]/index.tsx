@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AuthAlert } from '@/components/auth/auth-alert';
 import { Artwork } from '@/components/catalogue/artwork';
 import { StatusBadge } from '@/components/catalogue/status-badge';
+import { SeatsSection } from '@/components/label/seats-section';
 import { ArtworkPlaceholder, EmptyCatalogue } from '@/components/ui/illustrations';
 import { ScreenHeader } from '@/components/ui/screen-header';
 import { listReleases } from '@/features/catalogue/api';
@@ -157,6 +158,8 @@ export default function RosterArtistScreen() {
                   {artist.bio ? <Field label="BIO" value={artist.bio} /> : null}
                 </Animated.View>
               ) : null}
+
+              <SeatsSection artistId={artist.id} artistName={artist.stageName} />
 
               <View className="gap-2">
                 <Text className="font-outfit-medium text-caption text-muted tracking-[0.6px]">

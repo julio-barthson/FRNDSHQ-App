@@ -72,6 +72,13 @@ interface SessionValue {
    */
   setAccountType: (accountType: AccountType, name: string) => Promise<User>;
   resendCode: () => Promise<void>;
+  /**
+   * Re-reads the account from the server and re-evaluates which gate it is
+   * behind. Needed when something outside these methods changes the answer —
+   * accepting a seat invitation completes onboarding server-side, and without
+   * this the app would sit on the onboarding screen with a finished account.
+   */
+  refresh: () => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -179,6 +186,13 @@ export function SessionProvider({ children }: PropsWithChildren) {
     setShouldSendCode(false);
     setStatus('unverified');
     return result;
+  }, []);
+
+  const refresh = useCallback(async () => {
+    const me = await request<User>('/auth/me');
+    setUser(me);
+    setPendingEmail(me.emailVerified ? null : me.email);
+    setStatus(statusFor(me));
   }, []);
 
   const verifyEmail = useCallback(
@@ -308,6 +322,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
       saveProfile,
       setAccountType,
       resendCode,
+      refresh,
       signOut,
     }),
     [
@@ -322,6 +337,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
       saveProfile,
       setAccountType,
       resendCode,
+      refresh,
       signOut,
     ]
   );

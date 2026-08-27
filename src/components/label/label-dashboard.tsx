@@ -60,7 +60,11 @@ function RosterChip({ artist, onPress }: { artist: OverviewArtist; onPress: () =
       className="w-[92px] items-center gap-2 active:opacity-70">
       <View className="h-16 w-16 overflow-hidden rounded-full">
         {artist.avatarUrl ? (
-          <Artwork url={artist.avatarUrl} seedChar={artist.stageName.charAt(0)} className="h-16 w-16" />
+          <Artwork
+            url={artist.avatarUrl}
+            seedChar={artist.stageName.charAt(0)}
+            className="h-16 w-16"
+          />
         ) : (
           <ArtworkPlaceholder seedChar={artist.stageName.charAt(0)} />
         )}
@@ -115,8 +119,7 @@ export function LabelDashboard({
   const attention = attentionItems(actionable);
   const unlinked = roster.filter((artist) => !artist.hasSpotify).length;
 
-  const openStatus = (status: string) =>
-    router.push({ pathname: '/releases', params: { status } });
+  const openStatus = (status: string) => router.push({ pathname: '/releases', params: { status } });
 
   return (
     <>
@@ -146,31 +149,43 @@ export function LabelDashboard({
         <>
           <View className="gap-2">
             <SectionHeading>CATALOGUE</SectionHeading>
-            <View className="flex-row gap-2">
-              <StageTile
-                count={pipeline.drafts}
-                label="In progress"
-                tone="plain"
-                onPress={() => openStatus('DRAFT')}
-              />
-              <StageTile
-                count={pipeline.awaitingReview}
-                label="Awaiting review"
-                tone="plain"
-                onPress={() => openStatus('SUBMITTED')}
-              />
-              <StageTile
-                count={pipeline.needsChanges}
-                label="Needs changes"
-                tone="urgent"
-                onPress={() => openStatus('REJECTED')}
-              />
-              <StageTile
-                count={pipeline.ready}
-                label="Ready"
-                tone="plain"
-                onPress={() => openStatus('READY')}
-              />
+
+            <View className="flex-row flex-wrap gap-1">
+              <View className="w-[49%]">
+                <StageTile
+                  count={pipeline.drafts}
+                  label="In progress"
+                  tone="plain"
+                  onPress={() => openStatus('DRAFT')}
+                />
+              </View>
+
+              <View className="w-[49%]">
+                <StageTile
+                  count={pipeline.awaitingReview}
+                  label="Awaiting review"
+                  tone="plain"
+                  onPress={() => openStatus('SUBMITTED')}
+                />
+              </View>
+
+              <View className="w-[49%]">
+                <StageTile
+                  count={pipeline.needsChanges}
+                  label="Needs changes"
+                  tone="urgent"
+                  onPress={() => openStatus('REJECTED')}
+                />
+              </View>
+
+              <View className="w-[49%]">
+                <StageTile
+                  count={pipeline.ready}
+                  label="Ready"
+                  tone="plain"
+                  onPress={() => openStatus('READY')}
+                />
+              </View>
             </View>
           </View>
 
@@ -199,13 +214,17 @@ export function LabelDashboard({
               {attention.map((item) => (
                 <Pressable
                   key={`${item.releaseId}-${item.message}`}
-                  onPress={() => router.push({ pathname: '/release/[id]', params: { id: item.releaseId } })}
+                  onPress={() =>
+                    router.push({ pathname: '/release/[id]', params: { id: item.releaseId } })
+                  }
                   accessibilityRole="button"
                   className="bg-ink-raised active:bg-ink-high rounded-card flex-row items-center gap-4 p-4">
                   <View className="flex-1 gap-1">
                     {/* The artist leads. On a label's screen the title alone
                         does not say whose problem this is. */}
-                    <Text className="font-outfit-medium text-caption text-blue-ink" numberOfLines={1}>
+                    <Text
+                      className="font-outfit-medium text-caption text-blue-ink"
+                      numberOfLines={1}>
                       {item.artistName || 'Unattributed'}
                     </Text>
                     <Text className="font-outfit-semibold text-body text-fg" numberOfLines={1}>
@@ -228,7 +247,10 @@ export function LabelDashboard({
           <View className="gap-2">
             <View className="flex-row items-center justify-between">
               <SectionHeading>ROSTER</SectionHeading>
-              <Pressable onPress={() => router.push('/roster')} accessibilityRole="button" hitSlop={12}>
+              <Pressable
+                onPress={() => router.push('/roster')}
+                accessibilityRole="button"
+                hitSlop={12}>
                 <Text className="font-outfit-semibold text-label text-blue-ink">Manage</Text>
               </Pressable>
             </View>
@@ -241,7 +263,9 @@ export function LabelDashboard({
                 <RosterChip
                   key={artist.id}
                   artist={artist}
-                  onPress={() => router.push({ pathname: '/roster/[id]', params: { id: artist.id } })}
+                  onPress={() =>
+                    router.push({ pathname: '/roster/[id]', params: { id: artist.id } })
+                  }
                 />
               ))}
             </ScrollView>

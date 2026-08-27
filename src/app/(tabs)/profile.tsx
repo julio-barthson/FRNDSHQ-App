@@ -121,6 +121,13 @@ export default function ProfileScreen() {
               value={APPEARANCE_LABEL[preference]}
               onPress={() => router.push('/settings/appearance')}
             />
+            {/* Shown to everyone rather than only to accounts that already
+                hold a seat: this is where you go BEFORE you have one. */}
+            <SettingsLink
+              icon="mail-open-outline"
+              label="Accept an invitation"
+              onPress={() => router.push('/accept-invite')}
+            />
           </SettingsSection>
         </Animated.View>
 

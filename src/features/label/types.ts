@@ -76,3 +76,20 @@ export interface LabelOverview {
    */
   actionable: ReleaseSummary[];
 }
+
+export type SeatRole = 'VIEWER' | 'MANAGER';
+export type SeatStatus = 'PENDING' | 'ACTIVE' | 'REVOKED';
+
+/**
+ * Someone's access to one roster artist. Access, not ownership — the label
+ * keeps the catalogue, and revoking a seat takes nothing away from it.
+ */
+export interface ArtistSeat {
+  id: string;
+  email: string;
+  role: SeatRole;
+  status: SeatStatus;
+  acceptedAt: string | null;
+  createdAt: string;
+  artist: { id: string; stageName: string };
+}

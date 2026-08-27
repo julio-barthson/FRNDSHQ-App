@@ -1,8 +1,10 @@
 import type {
+  ArtistSeat,
   LabelOverview,
   RosterArtist,
   RosterArtistInput,
   RosterArtistSummary,
+  SeatRole,
 } from '@/features/label/types';
 import { request } from '@/lib/api';
 
@@ -57,4 +59,40 @@ export function removeRosterArtist(id: string) {
  */
 export function getLabelOverview() {
   return request<LabelOverview>('/label/overview');
+}
+
+/** `GET /label/artists/{id}/seats`. Outstanding invitations and accepted seats. */
+export function listSeats(artistId: string) {
+  return request<ArtistSeat[]>(`/label/artists/${artistId}/seats`);
+}
+
+/**
+ * `POST /label/artists/{id}/seats`. Emails a six-digit code, good for seven
+ * days. Re-inviting the same address replaces the outstanding code.
+ */
+export function inviteSeat(artistId: string, email: string, role: SeatRole) {
+  return request<ArtistSeat>(`/label/artists/${artistId}/seats`, {
+    method: 'POST',
+    body: { email, role },
+  });
+}
+
+/** `DELETE /seats/{id}`. Label owners only; effective on the holder's next request. */
+export function revokeSeat(seatId: string) {
+  return request<{ id: string; revoked: boolean }>(`/seats/${seatId}`, {
+    method: 'DELETE',
+  });
+}
+
+/**
+ * `POST /seats/accept`. Matched on the signed-in account's own email, so the
+ * code has to be redeemed from the mailbox it was sent to.
+ */
+export function acceptSeat(code: string) {
+  return request<ArtistSeat>('/seats/accept', { method: 'POST', body: { code } });
+}
+
+/** `GET /seats/mine`. The artists shared with this account. Empty for most people. */
+export function listMySeats() {
+  return request<ArtistSeat[]>('/seats/mine');
 }

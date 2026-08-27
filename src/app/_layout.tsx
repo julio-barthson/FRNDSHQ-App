@@ -78,6 +78,12 @@ function RootNavigator() {
         <Stack.Screen name="(onboarding)" />
       </Stack.Protected>
 
+      {/* Outside every guard on purpose: it has to be reachable from
+          onboarding, where an invited person is asked artist-or-label and is
+          neither, AND from Profile once they are signed in. A screen can only
+          belong to one Protected group, and this one spans two states. */}
+      <Stack.Screen name="accept-invite" options={{ presentation: 'modal' }} />
+
       <Stack.Protected guard={status === 'unverified'}>
         <Stack.Screen name="(verify)" />
       </Stack.Protected>
