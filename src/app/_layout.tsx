@@ -56,6 +56,13 @@ function RootNavigator() {
         <Stack.Screen name="edit-release/[id]" options={{ presentation: 'modal' }} />
         <Stack.Screen name="edit-tracks/[id]" options={{ presentation: 'modal' }} />
         <Stack.Screen name="edit-profile" options={{ presentation: 'modal' }} />
+        {/* Root-level, not inside (tabs): the Roster tab lists artists, and
+            adding or editing one rises over the bar the way every other form
+            in this app does. Both have to be declared here — a root route
+            missing from this group is unreachable, and the router answers a
+            push to it by trying to go back from a stack with no history. */}
+        <Stack.Screen name="roster/new" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="roster/[id]" options={{ presentation: 'modal' }} />
         {/* A destination rather than a modal: it is a list you scroll and page
             through, and tapping a row pushes onto the release from here. */}
         <Stack.Screen name="notifications" />
