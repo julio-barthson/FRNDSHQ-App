@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AuthAlert } from '@/components/auth/auth-alert';
 import { ArtistsSheet } from '@/components/catalogue/artists-sheet';
+import { CreditsSheet } from '@/components/catalogue/credits-sheet';
 import { ReorderSheet } from '@/components/catalogue/reorder-sheet';
 import { TrackCard } from '@/components/catalogue/track-card';
 import { KeyboardScroll } from '@/components/ui/keyboard-scroll';
@@ -24,6 +25,7 @@ import { isEditable, totalRuntime } from '@/features/catalogue/detail';
 import type { ContributorInput, ReleaseDetail } from '@/features/catalogue/types';
 import { useTrackPlayer } from '@/features/catalogue/use-track-player';
 import { useTrackUploads } from '@/features/catalogue/use-track-uploads';
+import { partitionContributors } from '@/features/catalogue/billing';
 import { ApiError } from '@/lib/api';
 
 /** The API's own ceiling. */
@@ -51,6 +53,9 @@ export default function EditTracksScreen() {
   const [artistsTrackId, setArtistsTrackId] = useState<string | null>(null);
   const [artistsPending, setArtistsPending] = useState(false);
   const [artistsError, setArtistsError] = useState<string | null>(null);
+  const [creditsTrackId, setCreditsTrackId] = useState<string | null>(null);
+  const [creditsPending, setCreditsPending] = useState(false);
+  const [creditsError, setCreditsError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -157,13 +162,43 @@ export default function EditTracksScreen() {
     }
   }
 
+  /**
+   * Saves one half of a track's contributor list without losing the other.
+   *
+   * `PATCH /tracks/{id}` replaces the list outright, and each sheet only ever
+   * holds its own half — so sending what the artists sheet knows about would
+   * delete every credit, and vice versa. The untouched half is carried through
+   * from what is already on the track.
+   */
+  async function saveContributors(
+    trackId: string,
+    half: 'billing' | 'credits',
+    rows: ContributorInput[]
+  ) {
+    if (!release) return;
+
+    const track = release.tracks.find((candidate) => candidate.id === trackId);
+    const existing = partitionContributors(track?.contributors ?? []);
+    const kept = half === 'billing' ? existing.credits : existing.billing;
+
+    // Billing first: the server renumbers `position` from array order, and
+    // billing order is meaningful — "Asake & Olamide" is not the other way up.
+    const merged =
+      half === 'billing'
+        ? [...rows, ...kept.map(({ name, role }) => ({ name, role }))]
+        : [...kept.map(({ name, role }) => ({ name, role })), ...rows];
+
+    return updateTrack(release.id, trackId, { contributors: merged });
+  }
+
   async function onSaveArtists(trackId: string, contributors: ContributorInput[]) {
     if (!release || artistsPending) return;
 
     setArtistsPending(true);
     setArtistsError(null);
     try {
-      setRelease(await updateTrack(release.id, trackId, { contributors }));
+      const updated = await saveContributors(trackId, 'billing', contributors);
+      if (updated) setRelease(updated);
       setArtistsTrackId(null);
     } catch (caught) {
       setArtistsError(
@@ -171,6 +206,24 @@ export default function EditTracksScreen() {
       );
     } finally {
       setArtistsPending(false);
+    }
+  }
+
+  async function onSaveCredits(trackId: string, contributors: ContributorInput[]) {
+    if (!release || creditsPending) return;
+
+    setCreditsPending(true);
+    setCreditsError(null);
+    try {
+      const updated = await saveContributors(trackId, 'credits', contributors);
+      if (updated) setRelease(updated);
+      setCreditsTrackId(null);
+    } catch (caught) {
+      setCreditsError(
+        caught instanceof ApiError ? caught.message : 'Could not save those credits.'
+      );
+    } finally {
+      setCreditsPending(false);
     }
   }
 
@@ -246,6 +299,7 @@ export default function EditTracksScreen() {
   const count = release.tracks.length;
   const full = count >= MAX_TRACKS;
   const artistsTrack = release.tracks.find((track) => track.id === artistsTrackId) ?? null;
+  const creditsTrack = release.tracks.find((track) => track.id === creditsTrackId) ?? null;
 
   return (
     <View className="bg-ink flex-1">
@@ -326,6 +380,10 @@ export default function EditTracksScreen() {
                 setArtistsError(null);
                 setArtistsTrackId(track.id);
               }}
+              onEditCredits={() => {
+                setCreditsError(null);
+                setCreditsTrackId(track.id);
+              }}
               inheritedArtist={release.displayArtist}
             />
           </Animated.View>
@@ -398,6 +456,18 @@ export default function EditTracksScreen() {
           error={artistsError}
           onCancel={() => setArtistsTrackId(null)}
           onSave={(rows) => void onSaveArtists(artistsTrack.id, rows)}
+        />
+      ) : null}
+
+      {creditsTrack ? (
+        <CreditsSheet
+          visible
+          title={creditsTrack.title}
+          contributors={creditsTrack.contributors}
+          pending={creditsPending}
+          error={creditsError}
+          onCancel={() => setCreditsTrackId(null)}
+          onSave={(rows) => void onSaveCredits(creditsTrack.id, rows)}
         />
       ) : null}
 

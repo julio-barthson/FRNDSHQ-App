@@ -15,6 +15,7 @@ import { ActionSheet, type SheetAction } from '@/components/ui/action-sheet';
 import { BackdropScrim, Glow } from '@/components/ui/illustrations';
 import { ScreenHeader, useScrolledPast } from '@/components/ui/screen-header';
 import { Brand } from '@/constants/brand';
+import { creditSummary } from '@/features/catalogue/billing';
 import { deleteRelease, getRelease, submitRelease } from '@/features/catalogue/api';
 import {
   formatDate,
@@ -76,6 +77,9 @@ function TrackRow({
 }) {
   const meta = trackMeta(track);
   const playable = isPlayable(track);
+  // Read-only here: the point is being able to check a credit without opening
+  // the editor to find out whether it saved.
+  const credits = creditSummary(track.contributors);
 
   return (
     <View className="bg-ink-raised rounded-card flex-row items-center gap-3 p-3">
@@ -94,6 +98,12 @@ function TrackRow({
             </View>
           ) : null}
         </View>
+
+        {credits ? (
+          <Text className="font-outfit text-caption text-muted" numberOfLines={1}>
+            {credits}
+          </Text>
+        ) : null}
 
         <Text
           className={`font-outfit text-label ${meta.bad ? 'text-danger' : 'text-muted'}`}

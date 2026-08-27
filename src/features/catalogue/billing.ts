@@ -17,6 +17,41 @@ import type { Contributor, ContributorInput, ContributorRole } from '@/features/
 /** The roles Phase 1 collects. The rest exist in the schema without a UI. */
 export const BILLING_ROLES: ContributorRole[] = ['PRIMARY_ARTIST', 'FEATURED_ARTIST', 'REMIXER'];
 
+/**
+ * The rest: people who made the recording without appearing on the cover.
+ *
+ * Kept apart from {@link BILLING_ROLES} because they answer different
+ * questions. A billing role changes the delivered title and who the release
+ * belongs to; a credit changes neither, and collecting both in one list would
+ * invite someone to make their producer a featured artist to get them listed.
+ *
+ * `OTHER` is deliberately absent: it exists so the API can accept a role it
+ * does not recognise, not so the app can offer "something else" as a choice.
+ */
+export const CREDIT_ROLES: ContributorRole[] = [
+  'PRODUCER',
+  'SONGWRITER',
+  'COMPOSER',
+  'MIXING_ENGINEER',
+  'MASTERING_ENGINEER',
+];
+
+/**
+ * Splits a contributor list along that line.
+ *
+ * Both sheets send back a whole list and `PATCH /tracks/{id}` replaces what is
+ * there, so each has to carry the other's rows through untouched — otherwise
+ * saving the artists sheet silently deletes every credit, and vice versa.
+ */
+export function partitionContributors<T extends { role: ContributorRole }>(
+  rows: T[]
+): { billing: T[]; credits: T[] } {
+  return {
+    billing: rows.filter((row) => BILLING_ROLES.includes(row.role)),
+    credits: rows.filter((row) => !BILLING_ROLES.includes(row.role)),
+  };
+}
+
 export const ROLE_LABEL: Record<ContributorRole, string> = {
   PRIMARY_ARTIST: 'Main artist',
   FEATURED_ARTIST: 'Featured',
@@ -40,7 +75,30 @@ export const ROLE_HINT: Partial<Record<ContributorRole, string>> = {
   PRIMARY_ARTIST: 'Shown on the cover. The release appears on their artist page.',
   FEATURED_ARTIST: 'Credited in the title as "feat.". No discography entry.',
   REMIXER: 'Credit the version to them. Name the version below too.',
+  PRODUCER: 'Made the record. Shown in credits, not in the title.',
+  SONGWRITER: 'Wrote the words. Publishing royalties are matched on this.',
+  COMPOSER: 'Wrote the music. Often the same person as the songwriter.',
+  MIXING_ENGINEER: 'Mixed the recording.',
+  MASTERING_ENGINEER: 'Mastered the recording.',
 };
+
+/**
+ * "Prod. Sarz · 2 songwriters" — enough to see at a glance whether a track has
+ * been credited, without reproducing the sheet on the card.
+ */
+export function creditSummary(rows: { name: string; role: ContributorRole }[]): string {
+  const credits = rows.filter((row) => CREDIT_ROLES.includes(row.role) && row.name.trim());
+  if (credits.length === 0) return '';
+
+  const producers = credits.filter((row) => row.role === 'PRODUCER');
+  const rest = credits.length - producers.length;
+
+  const parts: string[] = [];
+  if (producers.length > 0) parts.push(`Prod. ${joinNames(producers.map((row) => row.name))}`);
+  if (rest > 0) parts.push(`${rest} more credit${rest === 1 ? '' : 's'}`);
+
+  return parts.join(' · ');
+}
 
 /** "Asake & Olamide", or "A, B & C" past two. */
 export function joinNames(names: string[]): string {

@@ -6,6 +6,7 @@ import { PlayButton, Scrubber } from '@/components/catalogue/track-player';
 import { FormField, SelectField } from '@/components/ui/form-field';
 import { EmptyAudio } from '@/components/ui/illustrations';
 import { Brand } from '@/constants/brand';
+import { creditSummary } from '@/features/catalogue/billing';
 import { formatDuration, trackMeta } from '@/features/catalogue/detail';
 import type { DetailTrack, TrackStatus } from '@/features/catalogue/types';
 import { isPlayable } from '@/features/catalogue/use-track-player';
@@ -156,6 +157,7 @@ export function TrackCard({
   onPlay,
   onSeek,
   onEditArtists,
+  onEditCredits,
   inheritedArtist,
 }: {
   track: DetailTrack;
@@ -176,6 +178,7 @@ export function TrackCard({
   onPlay: () => void;
   onSeek: (seconds: number) => void;
   onEditArtists: () => void;
+  onEditCredits: () => void;
   /** The release's billing, which a track with none of its own inherits. */
   inheritedArtist: string;
 }) {
@@ -284,6 +287,22 @@ export function TrackCard({
             }
             disabled={busy}
             onPress={onEditArtists}
+          />
+
+          {/* Below Artists, deliberately: the order on screen is the order the
+              two get confused in. Billing first, then the people who are not
+              on the cover. */}
+          <SelectField
+            label="Credits"
+            value={creditSummary(track.contributors) || null}
+            placeholder="Producer, songwriter, engineer"
+            hint={
+              creditSummary(track.contributors)
+                ? undefined
+                : 'Optional. Songwriter and composer are what publishing royalties match on.'
+            }
+            disabled={busy}
+            onPress={onEditCredits}
           />
 
           <FormField
