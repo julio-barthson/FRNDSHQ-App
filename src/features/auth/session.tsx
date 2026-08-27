@@ -16,7 +16,7 @@ import type {
   RegisterResult,
   User,
 } from '@/features/auth/types';
-import { onSessionExpired, request } from '@/lib/api';
+import { ApiError, onSessionExpired, request } from '@/lib/api';
 import { tokenStore } from '@/lib/token-store';
 
 export type SessionStatus = 'loading' | 'signedOut' | 'unverified' | 'onboarding' | 'signedIn';
@@ -186,16 +186,52 @@ export function SessionProvider({ children }: PropsWithChildren) {
       const email = pendingEmail ?? user?.email;
       if (!email) throw new Error('No email to verify. Please sign in again.');
 
-      const session = await request<AuthSession>('/auth/verify-email', {
-        method: 'POST',
-        body: { email, otp },
-        auth: false,
-      });
+      try {
+        const session = await request<AuthSession>('/auth/verify-email', {
+          method: 'POST',
+          body: { email, otp },
+          auth: false,
+        });
 
-      await tokenStore.save(session.accessToken, session.refreshToken);
+        await tokenStore.save(session.accessToken, session.refreshToken);
+        setPendingEmail(null);
+        setShouldSendCode(false);
+        adopt(session);
+        return;
+      } catch (error) {
+        // Anything other than "already verified" is a real failure.
+        const alreadyVerified =
+          error instanceof ApiError &&
+          error.status === 400 &&
+          /already verified/i.test(error.message);
+
+        if (!alreadyVerified) throw error;
+      }
+
+      // The address IS confirmed — the first attempt landed and the reply was
+      // lost on the way back, so retrying hits an account with its OTP already
+      // cleared. Treating that as an error stranded people on this screen with
+      // a verified account, which is the worst of both. Recover instead.
+      //
+      // Safe because it proves nothing on the strength of the email alone:
+      // `/auth/me` is an authenticated call, so it only succeeds if this device
+      // already holds valid tokens — which it does whenever the account signed
+      // in and was sent here for being unverified.
+      const me = await request<User>('/auth/me').catch(() => null);
+
+      if (!me) {
+        // Arrived from signup, so there are no tokens to lean on. Nothing is
+        // wrong with the account; they just have to sign in once.
+        throw new ApiError(
+          401,
+          'Your email is already confirmed. Sign in to continue.'
+        );
+      }
+
       setPendingEmail(null);
       setShouldSendCode(false);
-      adopt(session);
+      setUser(me);
+      setStatus(statusFor(me));
     },
     [adopt, pendingEmail, user?.email]
   );
