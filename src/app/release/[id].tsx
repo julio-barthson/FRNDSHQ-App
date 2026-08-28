@@ -99,9 +99,9 @@ function TrackRow({
           ) : null}
         </View>
 
-        {credits ? (
+        {credits || track.isrc ? (
           <Text className="font-outfit text-caption text-muted" numberOfLines={1}>
-            {credits}
+            {[credits, track.isrc].filter(Boolean).join(' · ')}
           </Text>
         ) : null}
 
@@ -517,6 +517,9 @@ export default function ReleaseDetailScreen() {
             <Detail label="Secondary genre" value={release.secondaryGenre} />
             <Detail label="Language" value={release.language} />
             <Detail label="Release date" value={formatDate(release.releaseDate)} />
+            {/* Only once there is one. "Not assigned yet" on every draft would
+                read as something missing rather than something pending. */}
+            {release.upc ? <Detail label="Barcode" value={release.upc} /> : null}
             <Detail label="© Line" value={release.cLine} />
             <Detail label="℗ Line" value={release.pLine} />
             {/* Assigned by the distribution partner, so null through Phase 1. */}

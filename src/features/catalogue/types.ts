@@ -59,6 +59,11 @@ export interface ReleaseQuery {
 
 export interface TrackInput {
   title: string;
+  /**
+   * The recording's ISRC, if it already has one. Separators are fine — the API
+   * strips them. An empty string clears it.
+   */
+  isrc?: string;
   versionTitle?: string;
   explicit?: boolean;
   /** A confirmed AUDIO upload. Optional — a draft may exist before the file. */
@@ -67,6 +72,8 @@ export interface TrackInput {
 }
 
 export interface CreateReleaseInput {
+  /** The release barcode, if the artist already holds one. Empty string clears. */
+  upc?: string;
   /**
    * Which roster artist this release belongs to. Ignored for a solo artist,
    * who can only release as themselves; a label must send it unless its roster
@@ -178,6 +185,8 @@ export interface ReleaseDetail {
  */
 export interface UpdateReleaseInput {
   title?: string;
+  /** Empty string clears it. */
+  upc?: string;
   /**
    * Only sent when promoting a SINGLE so a second track can be added — the API
    * rejects `SINGLE` whenever the track count is not exactly one.
@@ -196,6 +205,8 @@ export interface UpdateReleaseInput {
 export interface UpdateTrackInput {
   title?: string;
   versionTitle?: string;
+  /** Empty string clears it. */
+  isrc?: string;
   explicit?: boolean;
   /** Replaces the whole list. */
   contributors?: ContributorInput[];

@@ -365,6 +365,13 @@ export default function EditTracksScreen() {
                   'Could not save that version name.'
                 )
               }
+              onIsrc={(isrc) =>
+                void mutate(
+                  track.id,
+                  () => updateTrack(release.id, track.id, { isrc }),
+                  'Could not save that ISRC.'
+                )
+              }
               onExplicit={(explicit) =>
                 void mutate(
                   track.id,

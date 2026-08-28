@@ -85,6 +85,7 @@ export default function EditReleaseScreen() {
   const [secondaryGenre, setSecondaryGenre] = useState<string | null>(null);
   const [language, setLanguage] = useState<string | null>(null);
   const [releaseDate, setReleaseDate] = useState<string | null>(null);
+  const [upc, setUpc] = useState('');
   const [cLine, setCLine] = useState('');
   const [pLine, setPLine] = useState('');
 
@@ -97,6 +98,7 @@ export default function EditReleaseScreen() {
       setSecondaryGenre(fetched.secondaryGenre);
       setLanguage(fetched.language);
       setReleaseDate(fetched.releaseDate ? fetched.releaseDate.slice(0, 10) : null);
+      setUpc(fetched.upc ?? '');
       setCLine(fetched.cLine ?? '');
       setPLine(fetched.pLine ?? '');
       setLoadError(null);
@@ -118,6 +120,7 @@ export default function EditReleaseScreen() {
       secondaryGenre !== release.secondaryGenre ||
       language !== release.language ||
       releaseDate !== (release.releaseDate ? release.releaseDate.slice(0, 10) : null) ||
+      upc !== (release.upc ?? '') ||
       cLine !== (release.cLine ?? '') ||
       pLine !== (release.pLine ?? ''));
 
@@ -174,6 +177,10 @@ export default function EditReleaseScreen() {
         ...(secondaryGenre ? { secondaryGenre } : {}),
         ...(language ? { language } : {}),
         ...(releaseDate ? { releaseDate } : {}),
+        // Sent even when empty, unlike the fields above: an empty string is
+        // how the API clears an identifier, so dropping it would leave a
+        // barcode impossible to remove once entered.
+        ...(upc.trim() !== (release.upc ?? '') ? { upc: upc.trim() } : {}),
         ...(cLine.trim() ? { cLine: cLine.trim() } : {}),
         ...(pLine.trim() ? { pLine: pLine.trim() } : {}),
       });
@@ -312,6 +319,19 @@ export default function EditReleaseScreen() {
             hint="The street date you intend, not today's date."
             disabled={saving}
             onPress={() => setDatePickerOpen(true)}
+          />
+
+          <FormField
+            label="Barcode (UPC)"
+            value={upc}
+            onChangeText={setUpc}
+            placeholder="Leave empty and one will be assigned"
+            hint="Only if you already have one for this release. 12 to 14 digits."
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="number-pad"
+            maxLength={20}
+            editable={!saving}
           />
 
           <FormField

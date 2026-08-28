@@ -151,6 +151,7 @@ export function TrackCard({
   onToggle,
   onRename,
   onVersion,
+  onIsrc,
   onExplicit,
   onRemove,
   onPickAudio,
@@ -172,6 +173,7 @@ export function TrackCard({
   onToggle: () => void;
   onRename: (title: string) => void;
   onVersion: (versionTitle: string) => void;
+  onIsrc: (isrc: string) => void;
   onExplicit: (explicit: boolean) => void;
   onRemove: () => void;
   onPickAudio: () => void;
@@ -184,6 +186,7 @@ export function TrackCard({
 }) {
   const [title, setTitle] = useState(track.title);
   const [versionTitle, setVersionTitle] = useState(track.versionTitle ?? '');
+  const [isrc, setIsrc] = useState(track.isrc ?? '');
 
   const uploading = upload != null && upload.error == null;
   const playable = isPlayable(track);
@@ -303,6 +306,22 @@ export function TrackCard({
             }
             disabled={busy}
             onPress={onEditCredits}
+          />
+
+          <FormField
+            label="ISRC"
+            value={isrc}
+            onChangeText={setIsrc}
+            onBlur={() => {
+              if (isrc.trim().toUpperCase() !== (track.isrc ?? ''))
+                onIsrc(isrc.trim().toUpperCase());
+            }}
+            placeholder="Leave empty and one will be assigned"
+            hint="Only if this recording already has one. It identifies the recording for royalties."
+            autoCapitalize="characters"
+            autoCorrect={false}
+            maxLength={20}
+            editable={!busy}
           />
 
           <FormField
