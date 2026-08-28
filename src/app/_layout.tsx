@@ -66,6 +66,7 @@ function RootNavigator() {
             a modal over it, like every other form here. */}
         <Stack.Screen name="roster/[id]/index" />
         <Stack.Screen name="roster/[id]/edit" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="shared-with-me" />
         {/* A destination rather than a modal: it is a list you scroll and page
             through, and tapping a row pushes onto the release from here. */}
         <Stack.Screen name="notifications" />

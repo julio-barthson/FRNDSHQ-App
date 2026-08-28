@@ -124,6 +124,11 @@ export default function ProfileScreen() {
             {/* Shown to everyone rather than only to accounts that already
                 hold a seat: this is where you go BEFORE you have one. */}
             <SettingsLink
+              icon="people-outline"
+              label="Shared with me"
+              onPress={() => router.push('/shared-with-me')}
+            />
+            <SettingsLink
               icon="mail-open-outline"
               label="Accept an invitation"
               onPress={() => router.push('/accept-invite')}
