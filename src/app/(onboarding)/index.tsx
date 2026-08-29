@@ -12,6 +12,7 @@ import { BrandMark } from '@/components/ui/brand-mark';
 import { FormField } from '@/components/ui/form-field';
 import { KeyboardScroll } from '@/components/ui/keyboard-scroll';
 import { Brand } from '@/constants/brand';
+import { ARTIST_NAME_MAX } from '@/constants/metadata-limits';
 import { DEFAULT_COUNTRY_CODE, findCountry, type Country } from '@/constants/countries';
 import { type Matchers } from '@/features/auth/field-errors';
 import { useSession } from '@/features/auth/session';
@@ -300,7 +301,7 @@ export default function OnboardingScreen() {
                     placeholder={isLabel ? 'Your label' : 'How you appear on stores'}
                     autoCapitalize="words"
                     autoCorrect={false}
-                    maxCount={100}
+                    maxCount={ARTIST_NAME_MAX}
                     editable={!pending}
                   />
                 </View>

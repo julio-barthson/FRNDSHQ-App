@@ -10,6 +10,7 @@ import { useToast } from '@/components/ui/toast';
 import { AuthAlert } from '@/components/auth/auth-alert';
 import { FormField } from '@/components/ui/form-field';
 import { Brand } from '@/constants/brand';
+import { ARTIST_NAME_MAX, LEGAL_NAME_MAX } from '@/constants/metadata-limits';
 import { type Matchers } from '@/features/auth/field-errors';
 import { useSession } from '@/features/auth/session';
 import { useAuthErrors } from '@/features/auth/use-auth-errors';
@@ -131,7 +132,7 @@ export default function EditProfileScreen() {
             error={errors.stageName}
             placeholder={isLabel ? 'Your label' : 'How you appear on stores'}
             autoCapitalize="words"
-            maxCount={100}
+            maxCount={ARTIST_NAME_MAX}
             editable={!saving}
           />
 
@@ -148,7 +149,7 @@ export default function EditProfileScreen() {
                 placeholder="Optional"
                 hint="Used on rights paperwork, never shown publicly."
                 autoCapitalize="words"
-                maxCount={100}
+                maxCount={LEGAL_NAME_MAX}
                 editable={!saving}
               />
 

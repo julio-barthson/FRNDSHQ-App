@@ -5,6 +5,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { AuthAlert } from '@/components/auth/auth-alert';
 import { AvatarPicker } from '@/components/label/avatar-picker';
 import { FormField } from '@/components/ui/form-field';
+import { ARTIST_NAME_MAX, LEGAL_NAME_MAX } from '@/constants/metadata-limits';
 import { type Matchers } from '@/features/auth/field-errors';
 import { useAuthErrors } from '@/features/auth/use-auth-errors';
 import type { RosterArtist, RosterArtistInput } from '@/features/label/types';
@@ -94,6 +95,13 @@ export function useRosterArtistForm(
 
     if (stageName.trim().length < 2) {
       next.stageName = 'Artist name must be at least 2 characters.';
+    } else if (stageName.trim().length > ARTIST_NAME_MAX) {
+      // Checked here as well as counted on screen: the counter warns, it does
+      // not stop, and the alternative is a round trip to learn the same thing.
+      next.stageName = `Artist name must not exceed ${ARTIST_NAME_MAX} characters — stores reject longer ones.`;
+    }
+    if (legalName.trim().length > LEGAL_NAME_MAX) {
+      next.legalName = `Legal name must not exceed ${LEGAL_NAME_MAX} characters.`;
     }
     if (bio.trim().length > BIO_MAX) {
       next.bio = `Bio must not exceed ${BIO_MAX} characters.`;
@@ -140,7 +148,7 @@ export function useRosterArtistForm(
           error={errors.stageName}
           placeholder="How they appear on stores"
           autoCapitalize="words"
-          maxCount={120}
+          maxCount={ARTIST_NAME_MAX}
           editable={!disabled}
           required
         />
@@ -156,7 +164,7 @@ export function useRosterArtistForm(
           hint="For contracts and royalty paperwork. Never shown publicly."
           placeholder="Optional"
           autoCapitalize="words"
-          maxCount={200}
+          maxCount={LEGAL_NAME_MAX}
           editable={!disabled}
         />
 
